@@ -1,0 +1,293 @@
+#8-bit Data Transmission (Read)
+
+#INSTR  OPERAND       OPCODE  BYTES     CYCLES  NVPBHIZC  Operation
+MOV     A, #imm       E8          2     2       N-----Z-  A <- imm
+MOV     A, (X)        E6          1     3       N-----Z-  A <- (X)
+MOV     A, (X)+       BF          1     4       N-----Z-  A <- (X), X is incremented afterward
+MOV     A, dp         E4          2     3       N-----Z-  A <- (dp)
+MOV     A, dp+X       F4          2     4       N-----Z-  A <- (dp+X)
+MOV     A, !abs       E5          3     4       N-----Z-  A <- (abs)
+MOV     A, !abs+X     F5          3     5       N-----Z-  A <- (abs+X)
+MOV     A, !abs+Y     F6          3     5       N-----Z-  A <- (abs+Y)
+MOV     A, [dp+X]     E7          2     6       N-----Z-  A <- (abs:(abs+X))
+MOV     A, [dp]+Y     F7          2     6       N-----Z-  A <- (abs:(abs)+Y)
+MOV     X, #imm       CD          2     2       N-----Z-  X <- imm
+MOV     X, dp         F8          2     3       N-----Z-  X <- (dp)
+MOV     X, dp+Y       F9          2     4       N-----Z-  X <- (dp+Y)
+MOV     X, !abs       E9          3     4       N-----Z-  X <- (abs)
+MOV     Y, #imm       8D          2     2       N-----Z-  Y <- imm
+MOV     Y, dp         EB          2     3       N-----Z-  Y <- (dp)
+MOV     Y, dp+X       FB          2     4       N-----Z-  Y <- (dp+X)
+MOV     Y, !abs       EC          3     4       N-----Z-  Y <- (abs)
+
+#8-bit Data Transmission (Write)
+
+#INSTR  OPERAND       OPCODE  BYTES     CYCLES  NVPBHIZC  Operation
+MOV     (X), A        C6          1     4       --------  A -> (X)
+MOV     (X)+, A       AF          1     4       --------  A -> (X), X is incremented
+MOV     dp, A         C4          2     4       --------  A -> (dp)
+MOV     dp+X, A       D4          2     5       --------  A -> (dp+X)
+MOV     !abs, A       C5          3     5       --------  A -> (abs)
+MOV     !abs+X, A     D5          3     6       --------  A -> (abs+X)
+MOV     !abs+Y, A     D6          3     6       --------  A -> (abs+Y)
+MOV     [dp+X], A     C7          2     7       --------  A -> (abs:(dp+X))
+MOV     [dp]+Y, A     D7          2     7       --------  A -> (abs:(dp)+Y)
+MOV     dp, X         D8          2     4       --------  X -> (dp)
+MOV     dp+Y, X       D9          2     5       --------  X -> (dp+Y)
+MOV     !abs, X       C9          3     5       --------  X -> (abs)
+MOV     dp, Y         CB          2     4       --------  Y -> (dp)
+MOV     dp+X, Y       DB          2     5       --------  Y -> (dp+X)
+MOV     !abs, Y       CC          3     5       --------  Y -> (abs)
+
+#8-bit Data Transmission (Reg->Reg, Mem->Mem )
+
+#INSTR  OPERAND       OPCODE  BYTES     CYCLES  NVPBHIZC  Operation
+MOV     A, X          7D          1     2       N-----Z-  A <- X
+MOV     A, Y          DD          1     2       N-----Z-  A <- Y
+MOV     X, A          5D          1     2       N-----Z-  A -> X
+MOV     Y, A          FD          1     2       N-----Z-  A -> Y
+MOV     X, SP         9D          1     2       N-----Z-  X <- SP
+MOV     SP, X         BD          1     2       --------  X -> SP
+MOV     dp, dp        FA          3     5       --------  (dp) <- (dp)
+MOV     dp, #imm      8F          3     4       --------  (dp) <- imm       # manual said 5, i think it is really 4
+
+#8-bit Arithmetic
+
+#INSTR  OPERAND       OPCODE  BYTES     CYCLES  NVPBHIZC  Operation
+ADC     A, #imm       88          2     2       NV--H-ZC  A += imm          + C
+ADC     A, (X)        86          1     3       NV--H-ZC  A += (X)          + C
+ADC     A, dp         84          2     3       NV--H-ZC  A += (dp)         + C
+ADC     A, dp+X       94          2     4       NV--H-ZC  A += (dp+X)       + C
+ADC     A, !abs       85          3     4       NV--H-ZC  A += (abs)        + C
+ADC     A, !abs+X     95          3     5       NV--H-ZC  A += (abs+X)      + C 
+ADC     A, !abs+Y     96          3     5       NV--H-ZC  A += (abs+Y)      + C
+ADC     A, [dp+X]     87          2     6       NV--H-ZC  A += (abs:(dp+X)) + C
+ADC     A, [dp]+Y     97          2     6       NV--H-ZC  A += (abs:(dp)+Y) + C
+ADC     (X),(Y)       99          1     5       NV--H-ZC  (X) += (Y)        + C
+ADC     dp, dp        89          3     6       NV--H-ZC  (dp) += (dp)      + C
+ADC     dp, #imm      98          3     5       NV--H-ZC  (dp) += imm       + C
+
+SBC     A, #imm       A8          2     2       NV--H-ZC  A -= imm          + !C
+SBC     A, (X)        A6          1     3       NV--H-ZC  A -= (X)          + !C
+SBC     A, dp         A4          2     3       NV--H-ZC  A -= (dp)         + !C
+SBC     A, dp+X       B4          2     4       NV--H-ZC  A -= (dp+X)       + !C
+SBC     A, !abs       A5          3     4       NV--H-ZC  A -= (abs)        + !C
+SBC     A, !abs+X     B5          3     5       NV--H-ZC  A -= (abs+X)      + !C
+SBC     A, !abs+Y     B6          3     5       NV--H-ZC  A -= (abs+Y)      + !C
+SBC     A, [dp+X]     A7          2     6       NV--H-ZC  A -= (abs:(dp+X)) + !C
+SBC     A, [dp]+Y     B7          2     6       NV--H-ZC  A -= (abs:(dp)+Y) + !C
+SBC     (X), (Y)      B9          1     5       NV--H-ZC  (X) -= (Y)        + !C
+SBC     dp, dp        A9          3     6       NV--H-ZC  (dp) -= (dp)      + !C
+SBC     dp, #imm      B8          3     5       NV--H-ZC  (dp) -= imm       + !C
+
+CMP     A, #imm       68          2     2       NV----ZC  A - imm
+CMP     A, (X)        66          1     3       NV----ZC  A - (X)
+CMP     A, dp         64          2     3       NV----ZC  A - (dp)
+CMP     A, dp+X       74          2     4       NV----ZC  A - (dp+X)
+CMP     A, !abs       65          3     4       NV----ZC  A - (abs)
+CMP     A, !abs+X     75          3     5       NV----ZC  A - (abs+X)
+CMP     A, !abs+Y     76          3     5       NV----ZC  A - (abs+Y)
+CMP     A, [dp+X]     67          2     6       NV----ZC  A - (abs:(dp+X))
+CMP     A, [dp]+Y     77          2     6       NV----ZC  A - (abs:(dp)+Y)
+CMP     (X), (Y)      79          1     5       NV----ZC  (X) - (Y)
+CMP     dp, dp        69          3     6       NV----ZC  (dp) - (dp)
+CMP     dp, #imm      78          3     5       NV----ZC  (dp) - imm
+CMP     X, #imm       C8          2     2       NV----ZC  X - imm
+CMP     X, dp         3E          2     3       NV----ZC  X - (dp)
+CMP     X, !abs       1E          3     4       NV----ZC  X - (abs)
+CMP     Y, #imm       AD          2     2       NV----ZC  Y - imm
+CMP     Y, dp         7E          2     3       NV----ZC  Y - (dp)
+CMP     Y, !abs       5E          3     4       NV----ZC  Y - (abs)
+
+#8-bit Logical Operations
+
+#INSTR  OPERAND       OPCODE  BYTES     CYCLES  NVPBHIZC  Operation
+AND     A, #imm       28          2     2       N-----Z-  A &= imm
+AND     A, (X)        26          1     3       N-----Z-  A &= (X)
+AND     A, dp         24          2     3       N-----Z-  A &= (dp)
+AND     A, dp+X       34          2     4       N-----Z-  A &= (dp+X)
+AND     A, !abs       25          3     4       N-----Z-  A &= (abs)
+AND     A, !abs+X     35          3     5       N-----Z-  A &= (abs+X)
+AND     A, !abs+Y     36          3     5       N-----Z-  A &= (abs+Y)
+AND     A, [dp+X]     27          2     6       N-----Z-  A &= (abs:(dp+X))
+AND     A, [dp]+Y     37          2     6       N-----Z-  A &= (abs:(dp)+Y)
+AND     (X), (Y)      39          1     5       N-----Z-  (X) &= (Y)
+AND     dp, dp        29          3     6       N-----Z-  (dp) &= (dp)
+AND     dp, #imm      38          3     5       N-----Z-  (dp) &= imm
+
+OR      A, #imm       08          2     2       N-----Z-  A |= imm
+OR      A, (X)        06          1     3       N-----Z-  A |= (X)
+OR      A, dp         04          2     3       N-----Z-  A |= (dp)
+OR      A, dp+X       14          2     4       N-----Z-  A |= (dp+X)
+OR      A, !abs       05          3     4       N-----Z-  A |= (abs)
+OR      A, !abs+X     15          3     5       N-----Z-  A |= (abs+X)
+OR      A, !abs+Y     16          3     5       N-----Z-  A |= (abs+Y)
+OR      A, [dp+X]     07          2     6       N-----Z-  A |= (abs:(dp+X))
+OR      A, [dp]+Y     17          2     6       N-----Z-  A |= (abs:(dp)+Y)
+OR      (X), (Y)      19          1     5       N-----Z-  (X) |= (Y)
+OR      dp, dp        09          3     6       N-----Z-  (dp) |= (dp)
+OR      dp, #imm      18          3     5       N-----Z-  (dp) |= imm
+
+EOR     A, #imm       48          2     2       N-----Z-  A ^= imm
+EOR     A, (X)        46          1     3       N-----Z-  A ^= (X)
+EOR     A, dp         44          2     3       N-----Z-  A ^= (dp)
+EOR     A, dp+X       54          2     4       N-----Z-  A ^= (dp+X)
+EOR     A, !abs       45          3     4       N-----Z-  A ^= (abs)
+EOR     A, !abs+X     55          3     5       N-----Z-  A ^= (abs+X)
+EOR     A, !abs+Y     56          3     5       N-----Z-  A ^= (abs+Y)
+EOR     A, [dp+X]     47          2     6       N-----Z-  A ^= (abs:(dp+X))
+EOR     A, [dp]+Y     57          2     6       N-----Z-  A ^= (abs:(dp)+Y))
+EOR     (X), (Y)      59          1     5       N-----Z-  (X) ^= (Y)
+EOR     dp, dp        49          3     6       N-----Z-  (dp) ^= (dp)
+EOR     dp, #imm      58          3     5       N-----Z-  (dp) ^= imm
+
+#8-bit Increment/Decrement Operations
+
+#INSTR  OPERAND       OPCODE  BYTES     CYCLES  NVPBHIZC  Operation
+INC     A             BC          1     2       N-----Z-  ++A
+INC     dp            AB          2     4       N-----Z-  ++(dp)
+INC     dp+X          BB          2     5       N-----Z-  ++(dp+X)
+INC     !abs          AC          3     5       N-----Z-  ++(abs)
+INC     X             3D          1     2       N-----Z-  ++X
+INC     Y             FC          1     2       N-----Z-  ++Y
+
+DEC     A             9C          1     2       N-----Z-  --A
+DEC     dp            8B          2     4       N-----Z-  --(dp)
+DEC     dp+X          9B          2     5       N-----Z-  --(dp+X)
+DEC     !abs          8C          3     5       N-----Z-  --(abs)
+DEC     X             1D          1     2       N-----Z-  --X
+DEC     Y             DC          1     2       N-----Z-  --Y
+
+#8-bit Shift/Rotation Operations
+
+#INSTR  OPERAND       OPCODE  BYTES     CYCLES  NVPBHIZC  Operation
+ASL     A             1C          1     2       N-----ZC  C << A      << 0
+ASL     dp            0B          2     4       N-----ZC  C << (dp)   << 0
+ASL     dp+X          1B          2     5       N-----ZC  C << (dp+X) << 0
+ASL     !abs          0C          3     5       N-----ZC  C << (abs)  << 0
+
+LSR     A             5C          1     2       N-----ZC  0 >> A      >> C
+LSR     dp            4B          2     4       N-----ZC  0 >> (dp)   >> C
+LSR     dp+X          5B          2     5       N-----ZC  0 >> (dp+X) >> C
+LSR     !abs          4C          3     5       N-----ZC  0 >> (abs)  >> C
+
+ROL     A             3C          1     2       N-----ZC  C << A      << C  :the last carry value is shifted
+ROL     dp            2B          2     4       N-----ZC  C << (dp)   << C  :into A, not the one you just shifted out!
+ROL     dp+X          3B          2     5       N-----ZC  C << (dp+X) << C  :
+ROL     !abs          2C          3     5       N-----ZC  C << (abs)  << C  :
+
+ROR     A             7C          1     2       N-----ZC  C >> A      >> C  :same with these
+ROR     dp            6B          2     4       N-----ZC  C >> (dp)   >> C  :
+ROR     dp+X          7B          2     5       N-----ZC  C >> (dp+X) >> C  :
+ROR     !abs          6C          3     5       N-----ZC  C >> (abs)  >> C  :
+
+XCN     A             9F          1     5       N-----Z-  Swaps the nibbles in A (A = (A>>4) | (A<<4))
+
+#16-bit Data Transmission Operations
+
+#INSTR   OPERAND       OPCODE  BYTES     CYCLES  NVPBHIZC  Operation
+MOVW    YA, dp        BA          2     5       N-----Z-  YA <- word:(dp)
+MOVW    dp, YA        DA          2     4       --------  YA -> word:(dp) :same cycles as writing 1 byte!
+
+#16-bit Arithmetic Operations
+
+#INSTR   OPERAND       OPCODE  BYTES     CYCLES  NVPBHIZC  Operation
+INCW    dp            3A          2     6       N-----Z-  ++word:(dp)
+DECW    dp            1A          2     6       N-----Z-  --word:(dp)
+ADDW    YA, dp        7A          2     5       NV--H-ZC  YA += word:(dp)
+SUBW    YA, dp        9A          2     5       NV--H-ZC  YA -= word:(dp)
+CMPW    YA, dp        5A          2     4       N-----ZC  YA - word:(dp)
+
+#Multiplication/Division Operations
+
+#INSTR  OPERAND       OPCODE  BYTES     CYCLES  NVPBHIZC  Operation
+MUL     YA            CF          1     9       N-----Z-  YA <- Y*A
+DIV     YA,X          9E          1     12      NV--H-Z-  Y <- YA % X and A <- YA / X
+
+#Decimal Compensation Operations
+
+#INSTR  OPERAND       OPCODE  BYTES     CYCLES  NVPBHIZC  Operation
+DAA     A             DF          1     3       N-----ZC  decimal adjust for addition
+DAS     A             BE          1     3       N-----ZC  decimal adjust for subtraction
+
+#Program Flow Operations
+
+#INSTR  OPERAND       OPCODE  BYTES     CYCLES  NVPBHIZC  Operation
+BRA     rel           2F          2     4       --------  Branch (always)               : branch always is slower than jump,
+BEQ     rel           F0          2     2/4     --------  Branch if Equal (Z=1)         : but branches uses relative addressing
+BNE     rel           D0          2     2/4     --------  Branch if Not Equal (Z=0)     :       (2 bytes instead of 3)
+BCS     rel           B0          2     2/4     --------  Branch if Carry Set
+BCC     rel           90          2     2/4     --------  Branch if Carry Cleared
+BVS     rel           70          2     2/4     --------  Branch if V=1
+BVC     rel           50          2     2/4     --------  Branch if V=0
+BMI     rel           30          2     2/4     --------  Branch if Negative (N=1)
+BPL     rel           10          2     2/4     --------  Branch if Positive (N=0)
+BBS     dp,bit,rel    x3          3     5/7     --------  Branch if memory bit set
+BBC     dp,bit,rel    y3          3     5/7     --------  Branch if memory bit cleared
+CBNE    dp, rel       2E          3     5/7     --------  Branch if A != (dp)
+CBNE    dp+X,rel      DE          3     6/8     --------  Branch if A != (dp+X)
+DBNZ    dp,rel        6E          3     5/7     --------  --(dp) and branch if not zero
+DBNZ    Y,rel         FE          2     4/6     --------  --Y and branch if not zero
+JMP     !abs          5F          3     3       --------  PC <- abs             : allows to jump anywhere in the memory space
+JMP     [!abs+X]      1F          3     6       --------  PC <- abs:(abs+X) 
+
+#Subroutine Operations
+
+#INSTR      OPERAND       OPCODE  BYTES     CYCLES  NVPBHIZC  Operation
+CALL    !abs          3F          3     8       --------  Subroutine call :pushes PC to stack and begins execution from abs
+PCALL   upage         4F          2     6       --------  Upage call (???)
+TCALL   n             n1          1     8       --------  Table call (??:)
+BRK                   0F          1     8       ---1-0--  Software interrupt (???)
+
+RET                   6F          1     5       --------  Return from subroutine (PC is popped)
+RETI                  7F          1     6       RESTORED  Return from interrupt (PC and PSW are popped)
+
+#Stack Operations
+
+#INSTR  OPERAND       OPCODE  BYTES     CYCLES  NVPBHIZC  Operation
+PUSH    A             2D          1     4       --------  Push A to stack
+PUSH    X             4D          1     4       --------  Push X to stack
+PUSH    Y             6D          1     4       --------  Push Y to stack
+PUSH    PSW           0D          1     4       --------  Push PSW to stack
+
+POP     A             AE          1     4       --------  Pop A from stack
+POP     X             CE          1     4       --------  Pop X from stack
+POP     Y             EE          1     4       --------  Pop Y from stack
+POP     PSW           8E          1     4       RESTORED  Pop PSW from stack :can be used to set PSW bits
+
+#Bit Operations
+
+#INSTR  OPERAND       OPCODE  BYTES     CYCLES  NVPBHIZC  Operation
+SET1    dp, bit       x2          2     4       --------  Set bit in direct page   : note that with the TASM table provided, these
+CLR1    dp, bit       y2          2     4       --------  Clear bit in direct page : instructions are done with "SETx/CLRx dp" where
+                                                                           : where x is the bit#
+TSET1   !abs          0E          3     6       N-----Z-  Test and set bits with A (???)
+TCLR1   !abs          4E          3     6       N-----Z-  Test and clear bits with A (???)
+
+AND1    C,mem,bit     4A          3     4       -------C  C &= mem:bit     :to use these instructions
+AND1    C,/mem,bit    6A          3     4       -------C  C &= ~mem:bit    :with the TASM table
+OR1     C,mem,bit     0A          3     5       -------C  C |= mem:bit     :the syntax is a bit wierd
+OR1     C,/mem,bit    2A          3     5       -------C  C |= ~mem:bit    : "for MOV1 mem,bit,C" it is:
+EOR1    C,mem,bit     8A          3     5       -------C  C ^= mem:bit     : MOV1 (mem+(bit<<13)),C
+NOT1    mem,bit       EA          3     5       --------  Complement mem:bit
+MOV1    C,mem,bit     AA          3     4       -------C  C <- mem:bit
+MOV1    mem,bit,C     CA          3     6       --------  C -> mem:bit
+
+#PSW Operations
+
+#INSTR  OPERAND       OPCODE  BYTES     CYCLES  NVPBHIZC  Operation
+CLRC                  60          1     2       -------0  Clear Carry
+SETC                  80          1     2       -------1  Set Carry
+NOTC                  ED          1     3       -------c  Complement Carry
+CLRV                  E0          1     2       -0--0---  Clear V and H
+CLRP                  20          1     2       --0-----  Clear DP page to 0
+SETP                  40          1     2       --1-----  Set DP page to 1
+EI                    A0          1     3       ------1-  Enable Interrupts (but interrupts are not supported)
+DI                    C0          1     3       ------0-  Disable Interrupts (but interrupts are not supported)
+
+#Other Commands
+
+#INSTR  OPERAND       OPCODE  BYTES     CYCLES  NVPBHIZC  Operation
+NOP                   00          1     2       --------  Delay
+SLEEP                 EF          1     3       --------  standby SLEEP mode
+STOP                  FF          1     3       --------  standby STOP mode (a good way to crash the program? :)

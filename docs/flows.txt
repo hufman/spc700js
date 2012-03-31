@@ -1,0 +1,70 @@
+Initializing
+window: spc700loader.load(url, successCallback, failureCallback)
+spc700loader.load: ajax the url into an object
+spc700loader.load: ret=new SPC700js(object)
+SPC700js.new: initialize internal state to reflect snapshot from spc file
+spc700loader.load: return ret;
+
+Step debugging:
+SPC700js.step: self.cpu.tick()
+SPC700js.cpu.tick: self.timers.tick()
+SPC700js.timers.tick: increase super private timer registers, upon hitting a threshold (8khz, 64khz) increment the real internal register, when that thresholds increment real external register
+SPC700js.cpu.tick: self.io.tick()
+SPC700js.io.tick: Do any IO things, like the DSP stuff
+SPC700js.cpu.tick: disassembled=self.disassembled.get(self.cpu.PC)
+SPC700js.cpu.tick: disassembled[self.cpu.PC_sub++](self, self.cpu.PC)
+SPC700js.cpu.tick: if (disassembled.cputime==self.cpu.PC_Sub) self.cpu.PC_sub=0
+
+Disassemble:
+SPC700js.cpu.tick: disassembled=self.disassembled.get(self.cpu.PC)
+SPC700js.disassembled.get: if (self.disassembled._map[location] != null) 
+SPC700js.disassembled.get:     self.disassembled._map[location] = self.disassembled.disassemble(self, location);
+SPC700js.disassembled.disassemble: opcode=self.ram.get(location);
+SPC700js.disassembled.disassemble: disassembled = SPC700js.opcodes[opcode];
+SPC700js.disassembled.disassemble: return disassembled;
+SPC700js.disassembled.get: for i in [0..disassembled.size]: self.disassembled._affected[location+i].append(location)
+SPC700js.disassembled.get: return self.disassembled._map[location];
+
+Ram access:
+SPC700js.opcodes[opcode][sub](): self.ram.get(location)
+SPC700js.ram.get: if (self.cheats[location]) return self.cheats[location]()
+SPC700js.ram.get: return self.ram._ram[location]
+
+SPC700js.opcodes[opcode][sub](): self.ram.set(location, value)
+SPC700js.ram.set: if (self.cheats[location]) return
+SPC700js.ram.set: self.disassembled.wipe(location)
+SPC700js.ram.set: self.ram._ram[location]=value
+SPC700js.ram.set: self.io.set(location, value)
+
+Disassembled notes:
+Each function block represents one tick of the CPU
+The last function block must move self.cpu.PC to the right place
+
+api:
+SPC700js.opcodes - map of opcodes to "disassembled" objects
+opcodes.bytes - how many bytes of program this opcode takes 
+opcodes.cycles - how many cpu cycles this opcode takes
+opcodes.desc - a pretty description of this opcode
+SPC700js.const.PSW_{N,V,P,H,C,B,I}
+SPC700js.new(ByteArray data) - create a new SPC700js object starting at this SPC file
+self.cpu.PC - current program location
+self.cpu.A - A register
+self.cpu.X - X register
+self.cpu.Y - Y register
+self.cpu.SP - Stack pointer
+self.cpu.PSW - status bits
+self.cpu.setPSW - set a certain status bit to the given boolean
+self.cpu.tick() - run one cpu tick
+self.cpu.push(bytevalue) - push one byte onto the stack, adjusting self.cpu.SP
+self.cpu.pop() - return the top byte from the stack
+self.disassembled._map - map of locations to instructions
+self.disassembled._affected - map of locations to the instructions that include that particular location
+self.disassembled.get(location) - get the disassembled opcode at this location
+self.ram.set(location, value) - set a byte of memory
+self.ram.get(location) - get a byte of memory
+self.timers.tick() - update any timers
+self.io.tick() - handle any necessary IO tasks
+self.io.set(location, value) - send a byte to an io port
+
+
+

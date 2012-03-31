@@ -1,0 +1,49 @@
+<html>
+<head>
+<script src="spc700js.js">
+</script>
+<script src="spc700opcodes.js">
+</script>
+<script>
+var loader=function() {
+	SPC700jsLoader.loadFromUrl('./test.spc', function(win) {window.spc=win; SPC700interface.init()}, function(fail) {alert('fail:'+fail)});
+}
+if (window.attachEvent) {window.attachEvent('onload', loader);}
+else if (window.addEventListener) {window.addEventListener('load', loader, false);}
+else {document.addEventListener('load', loader, false);} 
+
+var SPC700interface={
+	init:function() {
+		alert("Loaded "+spc.metadata.data['artist'] + ': ' + spc.metadata.data['game'] + ' - ' + spc.metadata.data['title']);
+		document.getElementById('disassemble').addEventListener('click', SPC700interface.disassembleHandle);
+		SPC700interface.display();
+	},
+	disassembleHandle:function(e) {
+		var found=spc.disassembled.parseNextAvailable(spc);
+		SPC700interface.display();
+	},
+	display:function() {
+		var output="Available:\n"
+		for (var index=0; index<spc.disassembled.available.length; index++) {
+			output+=spc.disassembled.available[index].toString(16)+"\n";
+		}
+		output+="\nDisassembled:\n"
+		var addrs=spc.disassembled.map.keys();
+		for (var index=0; index<addrs.length; index++) {
+			var addr=parseInt(addrs[index]);
+			var dis=spc.disassembled.map[addr];
+			output+=addr.toString(16)+"  "+dis.opcode+" "+dis.disassembly(spc, addr)+"\n";
+		}
+		
+		document.getElementById('disassembly').value=output;
+	}
+}
+</script>
+</head>
+
+<body id="body">
+<input id="disassemble" value="Disassemble" type="button" ></input>
+<textarea id="disassembly" rows="50" cols="400">
+</textarea>
+</body>
+</html>

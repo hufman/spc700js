@@ -1,0 +1,76 @@
+SPC700Loader
+	loadFromUrl(string url, function onSuccess(spc700), function onFailure(error))
+
+SPC700 (internal class layout)
+	new()
+	self
+	cpu
+		SPCCON1
+		SPCDRGA
+		SPCDDAT
+		SPCTMLT
+		SPCTMCT
+		A
+		X
+		Y
+		YA (Y << 8 + A)
+		SP
+		PC
+		PSW
+			N
+			V
+			P
+			H
+			C
+			B
+			I
+	dsp
+		voice[0-7]
+			VOLL
+			VOLR
+			PITCH
+			SRCN
+			ADSR1
+			ADSR2
+			GAIN
+			FILTER
+			ENVX
+			OUTX
+			hertz	// the hertz representation of the PITCH
+		ENVX
+		VALX
+		MASTVOLL
+		MASTVOLR
+		KEYON
+		KEYOFF
+		ECHO
+		ECHOVOLL
+		ECHOVOLR
+		ECHOEN
+		ECHOLOC
+		ECHODELAY
+		PITCHMOD
+		NOISEN
+		SAMLOC
+		VOXCON
+	sample[0-255]
+		sample
+		sampleStart
+		sampleLoop
+		
+interface SampleReader:
+	function reset()	// reset this sample to the beginning of the data
+	function readSample(hertz)	// read the next sample data
+class SampleReaderSPC
+class SampleReaderNoise
+
+interface SampleModifier:
+	function modify(inSample)	// do a transformation on this sample
+class SampleModifierADSR:		// implement an ADSR envelope
+	function new(attack, decay, suspendLevel, suspend)
+class SampleModifierGain:		// reads the voice register to implement a custom gain function
+	function new(voice, gain)
+class SampleModifierEcho:
+	function new(dsp)
+	
+dsp.setSample(index (0-255), sampleReader)

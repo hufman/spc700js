@@ -1,0 +1,4 @@
+http://vspcplay.raphnet.net/spc_file_format.txt
+http://romhack.wikia.com/wiki/SPC-700
+http://ekid.nintendev.com/snes/spctech.htm
+http://emureview.ztnet.com/developerscorner/SoundCPU/spc.htm

@@ -1,0 +1,1764 @@
+<head>
+<title>SPCTECH</title>
+</head>
+<body bgcolor=#FFFFFF>
+<table width="100%" border=0 bgcolor=#DDDDFF><tr><td><font size="+3"><center>SPCTECH</center></font></td></tr></table><br/>
+<center><font size="+1">SPC-700 Reference</font></center>
+
+<table width="100%"><tbody><tr><td width="45%" bgcolor="f2f2f2">
+<a href="#overview"><h3>System Overview</h3></a>
+<a href="#spcmap">SPC Memory Map / Registers</a><br/>
+<a href="#controlreg">Control Register</a><br/>
+<a href="#commports">Communication Ports</a><br/>
+<a href="#timers">Timers</a><br/>
+<a href="#dspaccess">DSP Access<br/>
+<a href="#undocreg">Undoc Register</a><br/>
+
+<h3>Development Tools</h3>
+<a href="#assembly">Assemblers</a><br/>
+<a href="#emulators">Emulators</a><br/>
+<a href="#hardware">Hardware</a><br/>
+<h3>CPU Reference</h3>
+<a href="#cpuregs">CPU Register Set</a><br/>
+<a href="#cpupsw">CPU Program Status Word</a><br/>
+<a href="#cpuinstr">CPU Instruction Set</a><br/>
+
+<h3><a href="#brr">Bit Rate Reduction</a></h3>
+<h3><a href="#bootloader">IPL ROM</a></h3>
+</td><td width="45%" bgcolor="f2f2f2">
+
+<h3>DSP Reference</h3>
+<a href="#dspregs">DSP Register Map</a><br/><br/>
+<a href="#dspvoicevol">DSP Voice Register: VOL</a><br/>
+<a href="#dspvoicepitch">DSP Voice Register: P</a><br/>
+<a href="#dspsrcn">DSP Voice Register: SRCN</a><br/>
+<a href="#dspadsr">DSP Voice Register: ADSR</a><br/>
+<a href="#dspgain">DSP Voice Register: GAIN</a><br/><br/>
+
+<a href="#dspmvol">DSP Register: MVOL/EVOL</a><br/>
+<a href="#dspkon">DSP Register: KON</a><br/>
+<a href="#dspkon">DSP Register: KOF</a><br/>
+<a href="#dspflg">DSP Register: FLG</a><br/>
+<a href="#dspendx">DSP Register: ENDX</a><br/>
+<a href="#dspefb">DSP Register: EFB</a><br/>
+<a href="#dsppmon">DSP Register: PMON</a><br/>
+<a href="#dspnon">DSP Register: NON</a><br/>
+<a href="#dspeon">DSP Register: EON</a><br/>
+<a href="#dspdir">DSP Register: DIR</a><br/>
+<a href="#dspesa">DSP Register: ESA</a><br/>
+<a href="#dspedl">DSP Register: EDL</a><br/>
+<a href="#dspcoef">DSP Register: COEF</a><br/>
+<br/>
+<a href="#echofunc">DSP Echo Function</a><br/>
+
+</td></tr></tbody></table><br/>
+
+<br/>
+<a name="about"></a>
+<table width="100%" border=0 bgcolor=#DDDDDD><tr><td><font size="+2">What is this?</font></td></tr></table><br/>
+An SPC-700 document that's not a decade old!<br/>
+A bit of this manual may be a straight copy, but I'm trying to keep an original perspective.<br/><br/>
+You will find blocks of text with different background colors:<br/>
+<table border=0 bgcolor=#DDffdd><tr><td>
+<pre>
+Green blocks will contain structure specifications, tables,
+or other technical info.
+</pre></td></tr></table><br/>
+<table border=0 bgcolor=#DDDDFF><tr><td>
+<pre>
+Blue blocks will contain psuedo code, or instructions how
+to do something.
+</pre></td></tr></table><br/>
+<table border=0 bgcolor=#FFCCCC><tr><td>
+<pre>
+Red blocks will contain warning messages. Things that should
+be kept in mind while programming.
+</pre></td></tr></table><br/>
+<table border=0 bgcolor=#EEAAFF><tr><td>
+<pre>
+Purple blocks will contain information that I am not <b>sure</b>
+is correct.
+</pre></td></tr></table><br/>
+<br/><br/>
+
+<a name="overview"></a>
+<table width="100%" border=0 bgcolor=#DDDDDD><tr><td><font size="+2">System Overview</font></td></tr></table>
+<pre>CPU		8-bit SPC700, runs at ~1Mhz ...with the effective speed being half :) (each instruction takes a minimum of 2 cycles)
+
+Memory		<font size="+2"><b>64KB</b></font> (NOT 32KB), shared with everything.
+
+Communication	4 8-bit I/O ports to transfer data to/from the SNES.
+
+Sound		8x channels of ADPCM compressed sample goodness.
+                The DSP also has special hardware for echo effects, white noise, and pitch modulation.
+
+Timers		Two 8-bit 8KHz timers + one more 8-bit 64KHz timer, all have 4-bit count-up values.
+</pre>
+<a name="spcmap"</a>
+<table width="100%" border=0 bgcolor=#DDDDDD><tr><td><font size="+2">SPC Memory Map and Registers</font></td></tr></table>
+<pre>
+$0000->$00EF    Page 0
+$00F0->$00FF    Registers
+$0100->$01FF    Page 1
+$0200->$FFBF    Memory
+
+<b>If X bit is set in the Undoc register:</b>
+
+$FFC0->$FFFF	Memory (write only)
+$FFC0->$FFFF	64 byte IPL ROM (read only)
+
+<b>Otherwise:</b>
+
+$FFC0->$FFFF	Memory (read/write)
+</pre>
+Pages 0/1 are known as the "Zero Pages". Accesses to zero page memory can be done with faster (and smaller) cpu instructions (one byte addresses). Which zero page to be operated on can be switched with a processor flag. Page 1 is mainly used for stack space.<br/>
+
+<pre>Registers:
+$F0    Undocumented         ?/W
+$F1    Control Register      /W
+$F2    DSP Register Address R/W
+$F3    DSP Register Data    R/W
+$F4    Port 0               R/W
+$F5    Port 1               R/W
+$F6    Port 2               R/W
+$F7    Port 3               R/W
+$F8    Regular memory       R/W
+$F9    Regular memory       R/W
+$FA    Timer-0               /W
+$FB    Timer-1               /W
+$FC    Timer-2               /W
+$FD    Counter-0            R/ 
+$FE    Counter-1            R/ 
+$FF    Counter-2            R/ </pre>
+<a name="undocreg"></a>
+<table width="100%" border=0 bgcolor=#DDDDDD><tr><td><font size="+2">Undocumented Register</font></td></tr></table><br/>
+Anomie has written something that shows some use of this register.
+<br/>
+<br/>
+<a name="controlreg"></a>
+<table width="100%" border=0 bgcolor=#DDDDDD><tr><td><font size="+2">Control register</font></td></tr></table>
+<br/>
+<table border=0 bgcolor=#DDffdd><tr><td>
+<pre>
+       7     6     5     4     3     2     1     0
+    +-----+-----+-----+-----+-----+-----+-----+-----+
+$F1 |  -  |  -  | PC32| PC10|  -  | ST2 | ST1 | ST0 | Control, Write only!
+    +-----+-----+-----+-----+-----+-----+-----+-----+
+
+PC32: "PORT CLEAR" Writing '1' here will reset input from ports 2 & 3. (reset to zero)
+PC10: "PORT CLEAR" Writing '1' here will reset input from ports 0 & 1.
+STx:  Writing '1' here will activate timer X, writing '0' disables the timer.
+
+</pre></td></tr></table><br/>
+There will probably be some conflict if the snes writes data at the same time the SPC initiates a port clear function.<br/><br/>
+Some emulators don't emulate this: (BSNES does though)
+<table border=0 bgcolor=#FFCCCC><tr><td>
+<pre>  Writing to the control register will ALWAYS reset active timers. Control is not readable.
+Writing '1' to any of the timer bits will start/restart the timer, even if it's already
+active, writing '0' will stop the timer. Even when using bit operations, the other timers will
+still be affected.</pre></td></tr></table><br/>
+<a name="commports"></a>
+<table width="100%" border=0 bgcolor=#DDDDDD><tr><td><font size="+2">Communication Ports</font></td></tr></table><br/>
+I was a little confused about the I/O ports at first... (because I'm a noob) but they're not too hard to understand. Basically there are actually 8-bytes of data passed around...<br/>
+The SNES uses registers $2140->$2143. The SPC uses registers $F4->$F7.<br/>
+<table border=0 bgcolor=#DDffdd><tr><td>
+<pre>
+SNES SIDE				SPC SIDE
+	
+(write)					   (write)
+-----> $2140 ------------,    .-------- $F4 <-----
+-----> $2141 ----------, |    |	.------	$F5 <-----
+-----> $2142 --------, | |    | | .----	$F6 <-----
+-----> $2143 ------, | | |    | | | .--	$F7 <-----
+                   | | | |    | | | |
+<----- $2140 <-----|-|-|-|----'	| | |
+<----- $2141 <-----|-|-|-|------' | |
+<----- $2142 <-----|-|-|-|--------' |
+<----- $2143 <-----|-|-|-|----------'
+ (read)            | | | |		    (read)
+                   | | | `------------> $F4 ------>
+                   | | `--------------> $F5 ------>
+                   | `----------------> $F6 ------>
+                   `------------------> $F7 ------>
+</pre></td></tr></table><br/>
+<table border=0 bgcolor=#FFCCCC><tr><td>
+<pre>Hardware Quirk! When writing in 16-bit values to $2140/$2141, a noise
+pulse (or some technical thingy) may write data to <i>$2143</i> too! Always
+write to $2140,$2141 with 8-bit writes if this is undesired.</pre></td></tr></table>
+
+</pre></td></tr></table><br/>
+<table border=0 bgcolor=#FFCCCC><tr><td>
+<pre>Another warning! When a read from a port conflicts with a write to the
+port from the opposing CPU, the data may be garbled. Always re-fetch values
+that may be affected by this conflict!</pre></td></tr></table><br/>
+
+Here is a fraction of code that handles the above conflict:
+<table border=0 bgcolor=#EEee88><tr><td>
+<pre>
+;-------------------------------------------------------------------
+comms_process:
+;-------------------------------------------------------------------
+
+	mov	a, comms_v		; COMMS_V is the last data written to port0
+	cmp	a, spc_port0		; if the value in port0 is different, this means the SNES has sent new data.
+	beq	cp_exit			; if its the same, then there are no messages.
+
+; receive message
+	mov	a, spc_port1		; PORT1 contains the message type
+	mov	comms_v, spc_port0	; PORT0 should contain valid data now, since a few cycles have passed.
+	cmp	a, #20h			; determine message type... etc...
+
+	--PROCESS MESSAGE--
+	
+	mov	spc_port0, comms_v	; mimic the value of port0 to let the SPC know we're finished,
+					; if the value is incorrect then the SNES will get caught in an infinite loop.
+</pre></td></tr></table><br/>
+
+Here is an unstable example that may crash:
+<table border=0 bgcolor=#EEee88><tr><td>
+<pre>
+;-------------------------------------------------------------------
+comms_process:
+;-------------------------------------------------------------------
+
+	mov	a, spc_port0		; check port0 for different data
+	cmp	a, comms_v		; comms_v is last value
+	beq	cp_exit			; if its the same, then there are no messages.
+
+; receive message
+	mov	comms_v, a		; save validation <- <font size="+2"><b>THE DATA MAY BE GARBLED.</b></font>
+	mov	a, spc_port1
+	
+	--PROCESS MESSAGE--
+	
+	mov	spc_port0, comms_v	; mimic the value of port0 to let the blah blah blah. This
+					; data might be incorrect! It may hang-up the SNES side.
+</pre></td></tr></table><br/>
+<a name="dspaccess"></a>
+<table width="100%" border=0 bgcolor=#DDDDDD><tr><td><font size="+2">DSP Access</font></td></tr></table><br/>
+The DSP is accessed through 2 registers. One register points to a DSP register index. The other allows reading from/writing to the DSP register specified.<br/>
+
+<table border=0 bgcolor=#DDffdd><tr><td>
+<pre>
+         7     6     5     4     3     2     1     0
+      +-----+-----+-----+-----+-----+-----+-----+-----+
+$F2   |  x  |  x  |  x  |  x  |  x  |  x  |  x  |  x  | DSP-Address, Read/Write
+      +-----+-----+-----+-----+-----+-----+-----+-----+
+
+x: Pointer to DSP register.
+
+         7     6     5     4     3     2     1     0
+      +-----+-----+-----+-----+-----+-----+-----+-----+
+$F3   |  x  |  x  |  x  |  x  |  x  |  x  |  x  |  x  | DSP-Data, Read/Write
+      +-----+-----+-----+-----+-----+-----+-----+-----+
+
+x: Data to be written / data being read.
+</pre></td></tr></table><br/>
+
+To write a value to the DSP:<br/>
+<table border=0 bgcolor=#DDDDFF><tr><td>
+<pre>
+1. Write address of DSP register to $F2.
+2. Write desired value to $F3.
+</pre></td></tr></table><br/>
+
+And to read a value:<br/>
+<table border=0 bgcolor=#DDDDFF><tr><td>
+<pre>
+1. Write address of DSP register to $F2.
+2. Read the value from $F3.
+</pre></td></tr></table><br/>
+
+$F2/$F3 can be written simultaneously with a 16-bit transfer:
+<table border=0 bgcolor=#EEee88><tr><td>
+<pre>
+; Setting DSP register $00 to $25
+; and $01 to $30
+
+	mov	a, #$00
+	mov	y, #$25
+	movw	$F2, ya
+	inc	a
+	mov	y, #$30
+	movw	$F2, ya
+
+; theres a few possibilities to write data to the DSP...
+; spc has some mem->mem / mem->imm instructions too.
+	
+	inc	$F2		; set register $02 to $99
+	mov	$F3, #$99
+</pre></td></tr></table><br/>
+<a name="timers"></a>
+<table width="100%" border=0 bgcolor=#DDDDDD><tr><td><font size="+2">Timers</font></td></tr></table><br/>
+The SPC contains 3 timers that can be used for general purpose. Timers 0,1 count up at 8KHz, Timer 2 has a higher precision of 64KHz.<br/><br/>
+
+<table border=0 bgcolor=#DDffdd><tr><td>
+<pre>
+         7     6     5     4     3     2     1     0
+      +-----+-----+-----+-----+-----+-----+-----+-----+
+$FA+X |  t  |  t  |  t  |  t  |  t  |  t  |  t  |  t  | Timer-X, Write only!
+      +-----+-----+-----+-----+-----+-----+-----+-----+
+
+t: Timing value.
+
+         7     6     5     4     3     2     1     0
+      +-----+-----+-----+-----+-----+-----+-----+-----+
+$FD+X |  -  |  -  |  -  |  -  |  c  |  c  |  c  |  c  | Counter-X, Read only!
+      +-----+-----+-----+-----+-----+-----+-----+-----+
+
+c: Count-up value.
+</pre></td></tr></table><br/>
+
+The timers consist of an 8-bit internal counter and a 4-bit up-counter. When the timer is off, the internal counter can be programmed through registers Timer-X registers.
+When the timer is activated by a '1' bit in the <a href="#controlreg">Control register</a>, then the timer starts counting up (at 8KHz/64Khz) until it reaches
+the amount specified in Timer-X. When this happens the internal counter is reset and Counter-X is incremented. When you read Counter-X, the value in it will be reset to zero.
+Take care not to let the up-counter overflow! It's only 4-bits wide, and if it overflows the value will be lost.<br/><br/>
+
+Psuedo code!!!<br/>
+<table border=0 bgcolor=#DDDDFF><tr><td>
+<pre>Setting timer 0 to tick at 15ms:
+
+1. ...Make sure the timer is off.
+2. Write 120 to $FA ( 15/(1000/8000) = 15*8 = 120 )
+3. Write '1' to the control register bit ($F1)
+4. Timer is started..
+5. Read $FD periodically to check if ticks have passed.
+</pre></td></tr></table><br/>
+Real Code:<br/>
+<table border=0 bgcolor=#EEee88><tr><td>
+<pre>; An example to wait 15ms.
+
+	mov	timer0,  #$FA	; 15ms timing value
+        mov	control, #$01	; this will destroy all other timers
+
+        ; timer is started
+
+wait_for_tick:
+        mov	a, counter0	; read counter
+        beq     wait_for_tick	; loop if 0
+
+	; tick has passed, process data
+</pre></td></tr></table><br/>
+
+<a name="assembly"></a>
+<table width="100%" border=0 bgcolor=#DDDDDD><tr><td><font size="+2">Assemblers</font></td></tr></table><br/>
+There are two assemblers I know of.<br/>
+<b><a href="http://www.villehelin.com/wla">WLA-DX</a></b><br/>
+This is the assembler I use for SNES code. I also used it to write some NES code (s3m->nsf), and a bit of Gameboy code. It hasn't failed me... until I tried to use it for SPC-700 code, it assembled "mov a, dp" with dp as a relative offset.... I gave up and went back to TASM for spc assembly.<br/>
+<b>TASM - Table Driven Assembler</b><br/>
+This is a pretty cool assembler that uses instruction tables during assembly. I used GAU's instruction sheet when developing the XMSNES driver (there were a few errors in it, but not too bad). I revised it a bit for my new driver though.<br/>
+<a href="http://emureview.ztnet.com/developerscorner/SoundCPU/spc.htm">GAU's tutorial</a><br/>
+<a href="tasm07.tab">Revised SPC-700 sheet</a>
+<br/><br/>
+<a name="emulators"></a>
+<table width="100%" border=0 bgcolor=#DDDDDD><tr><td><font size="+2">Emulators/Hardware</font></td></tr></table><br/>
+Sure it's a lot of fun programming the SPC... <b>BUT NOT DEBUGGING IT!</b> There are almost no good debuggers for the SPC!<br/>Here are the emulators I used:<br/>
+<a href="http://www.google.co.in/search?hl=en&q=spctool&btnG=Google+Search&meta="><b>SPCTool</b></a><br/>
+<b>Pros</b>:<br/>
+<ul>
+<li>SPC Debugger</li>
+<li><b>DSP Editor</b>, very useful</li>
+<li>Profiler</li>
+<li>Accurate playback</li>
+</ul>
+<b>Cons</b>:<br/>
+<ul>
+<li>I find the debugger a bit hard to use (maybe I just need to get used to it more)</li>
+<li>No SNES! It only emulates the SPC.</li>
+</ul>
+
+<b><a href="http://www.snes9x.com/">Snes9x</a>/<a href="http://www.zsnes.com/">ZSNES</a>/<a href="http://byuu.cinnamonpirate.com/bsnes/">BSNES</a></b>:<br/>
+<b>Pros</b>:<br/>
+<ul>
+<li>SNES<->SPC emulation</li>
+</ul>
+
+<b>Cons</b>:<br/>
+<ul>
+<li>No debugger!</li>
+<li>BSNES has a hard time running full speed on my machine</li>
+</ul>
+
+<a href="http://www.google.co.in/search?hl=en&safe=off&q=snes9x+debug&btnG=Search&meta="><b>Snes9x debug version</b></a><br/>
+<b>Pros</b>:<br/>
+<ul>
+<li>SNES<->SPC emulation</li>
+<li>SNES Debugger</li>
+<li>Can log activity of SNES/SPC/DSP</li>
+<li>Hex viewer</li>
+</ul>
+
+<b>Cons</b>:<br/>
+<ul>
+<li>A bit outdated</li>
+<li>No direct SPC debugging. (I hope you enjoy looking through gigantic log files and using "inf: bra inf" everywhere)</li>
+</ul>
+
+<a href="http://alpha-ii.com/Download/Main.html"><b>SNESAmp</b></a><br/>
+<b>Pros</b>:<br/>
+<ul>
+<li>Alpha-II in winamp :)</li>
+<li>Listen to SPCs easily.</li>
+</ul>
+
+<b>Cons</b>:<br/>
+<ul>
+<li>This is not a debugger whatsoever.</li>
+</ul>
+
+<a name="hardware"></a>
+<h2>Hardware Testing</h2>
+The problem with emulation is that it's quite impossible to recreate the SNES environment perfectly. I got a flashcart from <a href="http://www.tototek.com/">TOTOTEK</a> for hardware testing. This is the worst part of development, I spent days trying to fix problems that appeared on the hardware. (days of writing data to the SPC ports as a means of debugging (including rewriting the cart over 100 times)). The problems experienced when hardware testing can sometimes be really, <b>really</b> hard to fix.
+
+<br/><br/>
+<a name="cpuregs"></a>
+<table width="100%" border=0 bgcolor=#DDDDDD><tr><td><font size="+2">CPU Register Set</font></td></tr></table><br/>
+The CPU has 6 registers in it: <i>A, X, Y, SP, PC, PSW</i><br/><br/>
+All are 8-bit except for the <i>PC</i> (Program Counter), which points at a 16-bit program execution address.<br/><br/>
+The <i>A</i> (Accumulator) register is compatible with most CPU instructions.<br/><br/>
+The <i>X/Y</i> (Index) registers are mostly used for counters/memory addressing. For some instructions, the <i>Y</i> register can be paired with <i>A</i> ("<i>YA</i>") for 16-bit operations.<br/><br/>
+The <i>SP</i> (Stack Pointer) register points to an area of memory in Page1 (0100h -> 01FFh). Stack operations affect SP, the IPL ROM initializes SP to the top of Page1.<br/><br/>
+The <i>PSW</i> (Program Status Word) register contains various bits that effect operation of the CPU.
+
+<br/><br/>
+<a name="cpupsw"></a>
+<table width="100%" border=0 bgcolor=#DDDDDD><tr><td><font size="+2">CPU Program Status Word</font></td></tr></table><br/>
+<table border=0 bgcolor=#DDffdd><tr><td>
+<pre>
+Program Status Word
+      7     6     5     4     3     2     1     0
+   +-----+-----+-----+-----+-----+-----+-----+-----+
+   |  N  |  V  |  P  |  B  |  H  |  I  |  Z  |  C  |  
+   +-----+-----+-----+-----+-----+-----+-----+-----+
+</pre></td></tr></table><br/>
+<b>Negative Flag (N)</b><br/>
+The MSB of an operation's result is copied to the Negative flag.<br/>
+<b>Overflow Flag (V)</b><br/>
+I don't think I ever had to use this bit, It tells you if an overflow occured in the previous arithmetic operation.<br/>
+<b>Direct Page Flag (P)</b><br/>
+This bit controls the direct-page (dp) operations. The dp operations only have 1 address byte. If the P flag is cleared then the effective address will be 0000h+address. Otherwise it will be 0100h+address.<br/>
+<b>Half Carry Flag (H)</b><br/>
+I never used this flag either. I'm not really sure what it does.<br/>
+<b>Carry Flag (C)</b><br/>
+The carry flag is mainly used in arithmetic operations. It can be used to control program flow after addition/subtraction. Its also used by a few other functions, like shift commands. It can be directly set by instructions <i>SETC</i> and <i>CLRC</i>.<br/>
+<b>??? Flag (B)</b><br/>
+This flag is unused. The only instruction that touches it is BRK.<br/>
+<b>Interrupt Enable (I)</b><br/>
+Interrupts are not supported. This flag is unused.<br/>
+
+<br/><br/>
+<a name="cpuinstr"></a>
+<table width="100%" border=0 bgcolor=#DDDDDD><tr><td><font size="+2">CPU Instruction Set</font></td></tr></table><br/>
+<b>How to read this chart</b>
+
+<pre>
+Registers:
+A	A register
+X	X register
+Y	Y register
+PSW	PSW register
+YA	YA paired 16-bit register
+PC	Program Counter
+SP	Stack Pointer
+
+Data types:
+imm	8-bit immediate data
+dp	8-bit direct page offset (direct page is either 0000h or 0100h depending on P flag)
+abs	16-bit absolute address
+rel	8-bit offset relative to PC
+mem	bit operation address, (13-bits)
+bit	bit location (3-bits)
+
+Memory:
+(addr)       8-bit memory value at addr
+word:(addr)  16-bit memory value at addr
+abs:(addr)   16-bit memory value at addr
+I hope you get the point. :\
+
+For opcode affected instructions:
+	MSB
+x	[ x | x | x | 0 |     opcode    ]
+
+y	[ y | y | y | 1 |     opcode    ]
+
+Flag settings:
+Uppercase flag: Flag is set according to result of operation
+Lowercase 'c' : Flag is complemented
+       -      : Flag is not affected
+       0      : Flag is reset
+       1      : Flag is set
+
+Operations:
+
+<-	Transfer data (in direction)
+->	Transfer data
++=	Add values and affect operand
++	Add values and do not affect operand
+	Same for all arithmetic/logical operations
+-	Subtraction
+|	Logical OR
+^	Exclusive Logical OR
+&	Logical AND
+>>	Shift right 1 bit
+<<	Shift left 1 bit
+++	Increment Data
+--	Decrement Data
+*	Multiplication
+/	Division
+%	Modulus (remainder)</pre>
+<pre>
+<u>8-bit Data Transmission (Read)</u>
+
+<b>INSTR	OPERAND	  OPCODE  BYTES	CYCLES	NVPBHIZC  Operation</b>
+MOV	A, #imm	  E8	  2	2	N-----Z-  A <- imm
+MOV	A, (X)	  E6	  1	3	N-----Z-  A <- (X)
+MOV	A, (X)+	  BF	  1	4	N-----Z-  A <- (X), X is incremented afterward
+MOV	A, dp	  E4	  2	3	N-----Z-  A <- (dp)
+MOV	A, dp+X	  F4	  2	4	N-----Z-  A <- (dp+X)
+MOV	A, !abs	  E5	  3	4	N-----Z-  A <- (abs)
+MOV	A, !abs+X F5	  3	5	N-----Z-  A <- (abs+X)
+MOV	A, !abs+Y F6	  3	5	N-----Z-  A <- (abs+Y)
+MOV	A, [dp+X] E7	  2	6	N-----Z-  A <- (abs:(abs+X))
+MOV	A, [dp]+Y F7	  2	6	N-----Z-  A <- (abs:(abs)+Y)
+MOV	X, #imm	  CD	  2	2	N-----Z-  X <- imm
+MOV	X, dp	  F8	  2	3	N-----Z-  X <- (dp)
+MOV	X, dp+Y	  F9	  2	4	N-----Z-  X <- (dp+Y)
+MOV	X, !abs	  E9	  3	4	N-----Z-  X <- (abs)
+MOV	Y, #imm	  8D	  2	2	N-----Z-  Y <- imm
+MOV	Y, dp	  EB	  2	3	N-----Z-  Y <- (dp)
+MOV	Y, dp+X	  FB	  2	4	N-----Z-  Y <- (dp+X)
+MOV	Y, !abs	  EC	  3	4	N-----Z-  Y <- (abs)
+
+<u>8-bit Data Transmission (Write)</u>
+
+<b>INSTR	OPERAND	  OPCODE  BYTES	CYCLES	NVPBHIZC  Operation</b>
+MOV	(X), A	  C6	  1	4	--------  A -> (X)
+MOV	(X)+, A	  AF	  1	4	--------  A -> (X), X is incremented
+MOV	dp, A	  C4	  2	4	--------  A -> (dp)
+MOV	dp+X, A	  D4	  2	5	--------  A -> (dp+X)
+MOV	!abs, A	  C5	  3	5	--------  A -> (abs)
+MOV	!abs+X, A D5	  3	6	--------  A -> (abs+X)
+MOV	!abs+Y, A D6	  3	6	--------  A -> (abs+Y)
+MOV	[dp+X], A C7	  2	7	--------  A -> (abs:(dp+X))
+MOV	[dp]+Y, A D7	  2	7	--------  A -> (abs:(dp)+Y)
+MOV	dp, X	  D8	  2	4	--------  X -> (dp)
+MOV	dp+Y, X	  D9	  2	5	--------  X -> (dp+Y)
+MOV	!abs, X	  C9	  3	5	--------  X -> (abs)
+MOV	dp, Y	  CB	  2	4	--------  Y -> (dp)
+MOV	dp+X, Y	  BB	  2	5	--------  Y -> (dp+X)
+MOV	!abs, Y	  CC	  3	5	--------  Y -> (abs)
+
+<u>8-bit Data Transmission (Reg->Reg, Mem->Mem )</u>
+
+<b>INSTR	OPERAND	  OPCODE  BYTES	CYCLES	NVPBHIZC  Operation</b>
+MOV	A, X	  7D	  1	2	N-----Z-  A <- X
+MOV	A, Y	  DD	  1	2	N-----Z-  A <- Y
+MOV	X, A	  5D	  1	2	N-----Z-  A -> X
+MOV	Y, A	  FD	  1	2	N-----Z-  A -> Y
+MOV	X, SP	  9D	  1	2	N-----Z-  X <- SP
+MOV	SP, X	  BD	  1	2	--------  X -> SP
+MOV	<font color=red>dp</font>, dp	  FA	  3	5	--------  (<font color=red>dp</font>) <- (dp)
+MOV	dp, #imm  8F	  3	5	--------  (dp) <- imm
+
+<u>8-bit Arithmetic</u>
+
+<b>INSTR	OPERAND	  OPCODE  BYTES	CYCLES	NVPBHIZC  Operation</b>
+ADC	A, #imm	  88	  2	2	NV--H-ZC  A += imm	    + C
+ADC	A, (X)	  86	  1	3	NV--H-ZC  A += (X)	    + C
+ADC	A, dp	  84	  2	3	NV--H-ZC  A += (dp)	    + C
+ADC	A, dp+X	  94	  2	4	NV--H-ZC  A += (dp+X)	    + C
+ADC	A, !abs	  85	  3	4	NV--H-ZC  A += (abs)	    + C
+ADC	A, !abs+X 95	  3	5	NV--H-ZC  A += (abs+X)	    + C 
+ADC	A, !abs+Y 96	  3	5	NV--H-ZC  A += (abs+Y)	    + C
+ADC	A, [dp+X] 87	  2	6	NV--H-ZC  A += (abs:(dp+X)) + C
+ADC	A, [dp]+Y 97	  2	6	NV--H-ZC  A += (abs:(dp)+Y) + C
+ADC	(X),(Y)	  99	  1	5	NV--H-ZC  (X) += (Y)	    + C
+ADC	<font color=red>dp</font>, dp  89	  3	6	NV--H-ZC  (<font color=red>dp</font>) += (dp)	    + C
+ADC	dp, #imm  98	  3	5	NV--H-ZC  (dp) += imm	    + C
+
+SBC	A, #imm	  A8	  2	2	NV--H-ZC  A -= imm	    + !C
+SBC	A, (X)	  A6	  1	3	NV--H-ZC  A -= (X)	    + !C
+SBC	A, dp	  A4	  2	3	NV--H-ZC  A -= (dp)	    + !C
+SBC	A, dp+X	  B4	  2	4	NV--H-ZC  A -= (dp+X)	    + !C
+SBC	A, !abs	  A5	  3	4	NV--H-ZC  A -= (abs)	    + !C
+SBC	A, !abs+X B5	  3	5	NV--H-ZC  A -= (abs+X)	    + !C
+SBC	A, !abs+Y B6	  3	5	NV--H-ZC  A -= (abs+Y)	    + !C
+SBC	A, [dp+X] A7	  2	6	NV--H-ZC  A -= (abs:(dp+X)) + !C
+SBC	A, [dp]+Y B7	  2	6	NV--H-ZC  A -= (abs:(dp)+Y) + !C
+SBC	(X), (Y)  B9	  1	5	NV--H-ZC  (X) -= (Y)	    + !C
+SBC	<font color=red>dp</font>, dp	  A9	  3	6	NV--H-ZC  (<font color=red>dp</font>) -= (dp)	    + !C
+SBC	dp, #imm  B8	  3	5	NV--H-ZC  (dp) -= imm	    + !C
+
+CMP	A, #imm	  68	  2	2	NV----ZC  A - imm
+CMP	A, (X)	  66	  1	3	NV----ZC  A - (X)
+CMP	A, dp	  64	  2	3	NV----ZC  A - (dp)
+CMP	A, dp+X	  74	  2	4	NV----ZC  A - (dp+X)
+CMP	A, !abs	  65	  3	4	NV----ZC  A - (abs)
+CMP	A, !abs+X 75	  3	5	NV----ZC  A - (abs+X)
+CMP	A, !abs+Y 76	  3	5	NV----ZC  A - (abs+Y)
+CMP	A, [dp+X] 67	  2	6	NV----ZC  A - (abs:(dp+X))
+CMP	A, [dp]+Y 77	  2	6	NV----ZC  A - (abs:(dp)+Y)
+CMP	(X), (Y)  79	  1	5	NV----ZC  (X) - (Y)
+CMP	<font color=red>dp</font>, dp	  69	  3	6	NV----ZC  (<font color=red>dp</font>) - (dp)
+CMP	dp, #imm  78	  3	5	NV----ZC  (dp) - imm
+CMP	X, #imm	  C8	  2	2	NV----ZC  X - imm
+CMP	X, dp	  3E	  2	3	NV----ZC  X - (dp)
+CMP	X, !abs	  1E	  3	4	NV----ZC  X - (abs)
+CMP	Y, #imm	  AD	  2	2	NV----ZC  Y - imm
+CMP	Y, dp	  7E	  2	3	NV----ZC  Y - (dp)
+CMP	Y, !abs	  5E	  3	4	NV----ZC  Y - (abs)
+
+<u>8-bit Logical Operations</u>
+
+<b>INSTR	OPERAND	  OPCODE  BYTES	CYCLES	NVPBHIZC  Operation</b>
+AND	A, #imm	  28	  2	2	N-----Z-  A &= imm
+AND	A, (X)	  26	  1	3	N-----Z-  A &= (X)
+AND	A, dp	  24	  2	3	N-----Z-  A &= (dp)
+AND	A, dp+X	  34	  2	4	N-----Z-  A &= (dp+X)
+AND	A, !abs	  25	  3	4	N-----Z-  A &= (abs)
+AND	A, !abs+X 35	  3	5	N-----Z-  A &= (abs+X)
+AND	A, !abs+Y 36	  3	5	N-----Z-  A &= (abs+Y)
+AND	A, [dp+X] 27	  2	6	N-----Z-  A &= (abs:(dp+X))
+AND	A, [dp]+Y 37	  2	6	N-----Z-  A &= (abs:(dp)+Y)
+AND	(X), (Y)  39	  1	5	N-----Z-  (X) &= (Y)
+AND	<font color=red>dp</font>, dp	  29	  3	6	N-----Z-  (<font color=red>dp</font>) &= (dp)
+AND	dp, #imm  38	  3	5	N-----Z-  (dp) &= imm
+
+OR	A, #imm	  08	  2	2	N-----Z-  A |= imm
+OR	A, (X)	  06	  1	3	N-----Z-  A |= (X)
+OR	A, dp	  04	  2	3	N-----Z-  A |= (dp)
+OR	A, dp+X	  14	  2	4	N-----Z-  A |= (dp+X)
+OR	A, !abs	  05	  3	4	N-----Z-  A |= (abs)
+OR	A, !abs+X 15	  3	5	N-----Z-  A |= (abs+X)
+OR	A, !abs+Y 16	  3	5	N-----Z-  A |= (abs+Y)
+OR	A, [dp+X] 07	  2	6	N-----Z-  A |= (abs:(dp+X))
+OR	A, [dp]+Y 17	  2	6	N-----Z-  A |= (abs:(dp)+Y)
+OR	(X), (Y)  19	  1	5	N-----Z-  (X) |= (Y)
+OR	<font color=red>dp</font>, dp	  09	  3	6	N-----Z-  (<font color=red>dp</font>) |= (dp)
+OR	dp, #imm  18	  3	5	N-----Z-  (dp) |= imm
+
+EOR	A, #imm	  48	  2	2	N-----Z-  A ^= imm
+EOR	A, (X)	  46	  1	3	N-----Z-  A ^= (X)
+EOR	A, dp	  44	  2	3	N-----Z-  A ^= (dp)
+EOR	A, dp+X	  54	  2	4	N-----Z-  A ^= (dp+X)
+EOR	A, !abs	  45	  3	4	N-----Z-  A ^= (abs)
+EOR	A, !abs+X 55	  3	5	N-----Z-  A ^= (abs+X)
+EOR	A, !abs+Y 56	  3	5	N-----Z-  A ^= (abs+Y)
+EOR	A, [dp+X] 47	  2	6	N-----Z-  A ^= (abs:(dp+X))
+EOR	A, [dp]+Y 57	  2	6	N-----Z-  A ^= (abs:(dp)+Y))
+EOR	(X), (Y)  59	  1	5	N-----Z-  (X) ^= (Y)
+EOR	<font color=red>dp</font>, dp	  49	  3	6	N-----Z-  (<font color=red>dp</font>) ^= (dp)
+EOR	dp, #imm  58	  3	5	N-----Z-  (dp) ^= imm
+
+<u>8-bit Increment/Decrement Operations</u>
+
+<b>INSTR	OPERAND	  OPCODE  BYTES	CYCLES	NVPBHIZC  Operation</b>
+INC	A	  BC	  1	2	N-----Z-  ++A
+INC	dp	  AB	  2	4	N-----Z-  ++(dp)
+INC	dp+X	  BB	  2	5	N-----Z-  ++(dp+X)
+INC	!abs	  AC	  3	5	N-----Z-  ++(abs)
+INC	X	  3D	  1	2	N-----Z-  ++X
+INC	Y	  FC	  1	2	N-----Z-  ++Y
+
+DEC	A	  9C	  1	2	N-----Z-  --A
+DEC	dp	  8B	  2	4	N-----Z-  --(dp)
+DEC	dp+X	  9B	  2	5	N-----Z-  --(dp+X)
+DEC	!abs	  8C	  3	5	N-----Z-  --(abs)
+DEC	X	  1D	  1	2	N-----Z-  --X
+DEC	Y	  DC	  1	2	N-----Z-  --Y
+
+<u>8-bit Shift/Rotation Operations</u>
+
+<b>INSTR	OPERAND	  OPCODE  BYTES	CYCLES	NVPBHIZC  Operation</b>
+ASL	A	  1C	  1	2	N-----ZC  C << A      << 0
+ASL	dp	  0B	  2	4	N-----ZC  C << (dp)   << 0
+ASL	dp+X	  1B	  2	5	N-----ZC  C << (dp+X) << 0
+ASL	!abs	  0C	  3	5	N-----ZC  C << (abs)  << 0
+
+LSR	A	  5C	  1	2	N-----ZC  0 >> A      >> C
+LSR	dp	  4B	  2	4	N-----ZC  0 >> (dp)   >> C
+LSR	dp+X	  5B	  2	5	N-----ZC  0 >> (dp+X) >> C
+LSR	!abs	  4C	  3	5	N-----ZC  0 >> (abs)  >> C
+
+ROL	A	  3C	  1	2	N-----ZC  C << A      << C  :the last carry value is shifted
+ROL	dp	  2B	  2	4	N-----ZC  C << (dp)   << C  :into A, not the one you just shifted out!
+ROL	dp+X	  3B	  2	5	N-----ZC  C << (dp+X) << C  :
+ROL	!abs	  2C	  3	5	N-----ZC  C << (abs)  << C  :
+
+ROR	A	  7C	  1	2	N-----ZC  C >> A      >> C  :same with these
+ROR	dp	  6B	  2	4	N-----ZC  C >> (dp)   >> C  :
+ROR	dp+X	  7B	  2	5	N-----ZC  C >> (dp+X) >> C  :
+ROR	!abs	  6C	  3	5	N-----ZC  C >> (abs)  >> C  :
+
+XCN	A	  9F	  1	5	N-----Z-  Swaps the nibbles in A (A = (A>>4) | (A<<4))
+
+<u>16-bit Data Transmission Operations</u>
+
+<b>INSTR	OPERAND	  OPCODE  BYTES	CYCLES	NVPBHIZC  Operation</b>
+MOVW	YA, dp	  BA	  2	5	N-----Z-  YA <- word:(dp)
+MOVW	dp, YA	  DA	  2	4	--------  YA -> word:(dp) :same cycles as writing 1 byte!
+
+<u>16-bit Arithmetic Operations</u>
+
+<b>INSTR	OPERAND	  OPCODE  BYTES	CYCLES	NVPBHIZC  Operation</b>
+INCW	dp	  3A	  2	6	N-----Z-  ++word:(dp)
+DECW	dp	  1A	  2	6	N-----Z-  --word:(dp)
+ADDW	YA, dp	  7A	  2	5	NV--H-ZC  YA += word:(dp)
+SUBW	YA, dp	  9A	  2	5	NV--H-ZC  YA -= word:(dp)
+CMPW	YA, dp	  5A	  2	4	N-----ZC  YA - word:(dp)
+
+<u>Multiplication/Division Operations</u>
+
+<b>INSTR	OPERAND	  OPCODE  BYTES	CYCLES	NVPBHIZC  Operation</b>
+MUL	YA	  CF	  1	9	N-----Z-  YA <- Y*A
+DIV	YA,X	  9E	  1	12	NV--H-Z-  Y <- YA % X and A <- YA / X
+
+<u>Decimal Compensation Operations</u>
+
+<b>INSTR	OPERAND	  OPCODE  BYTES	CYCLES	NVPBHIZC  Operation</b>
+DAA	A	  DF	  1	3	N-----ZC  decimal adjust for addition
+DAS	A	  BE	  1	3	N-----ZC  decimal adjust for subtraction
+
+<u>Program Flow Operations</u>
+
+<b>INSTR	OPERAND	  OPCODE  BYTES	CYCLES	NVPBHIZC  Operation</b>
+BRA	rel	  2F	  2	4	--------  Branch (always)		: branch always is slower than jump,
+BEQ	rel	  F0	  2	2/4	--------  Branch if Equal (Z=1) 	: but branches uses relative addressing
+BNE	rel	  D0	  2	2/4	--------  Branch if Not Equal (Z=0)	:       (2 bytes instead of 3)
+BCS	rel	  B0	  2	2/4	--------  Branch if Carry Set
+BCC	rel	  90	  2	2/4	--------  Branch if Carry Cleared
+BVS	rel	  70	  2	2/4	--------  Branch if V=1
+BVC	rel	  50	  2	2/4	--------  Branch if V=0
+BMI	rel	  30	  2	2/4	--------  Branch if Negative (N=1)
+BPL	rel	  10	  2	2/4	--------  Branch if Positive (N=0)
+BBS	dp,bit,rel x3	  3	5/7	--------  Branch if memory bit set
+BBC	dp,bit,rel y3	  3	5/7	--------  Branch if memory bit cleared
+CBNE	dp, rel	  2E	  3	5/7	--------  Branch if A != (dp)
+CBNE	dp+X,rel  DE	  3	6/8	--------  Branch if A != (dp+X)
+DBNZ	dp,rel	  6E	  3	5/7	--------  --(dp) and branch if not zero
+DBNZ	Y,rel	  FE	  2	4/6	--------  --Y and branch if not zero
+JMP	!abs	  5F	  3	3	--------  PC <- abs		: allows to jump anywhere in the memory space
+JMP	[!abs+X]  1F	  3	6	--------  PC <- abs:(abs+X) 
+
+<u>Subroutine Operations</u>
+
+<b>INSTR	OPERAND	  OPCODE  BYTES	CYCLES	NVPBHIZC  Operation</b>
+CALL	!abs	  3F	  3	8	--------  Subroutine call :pushes PC to stack and begins execution from abs
+PCALL	upage	  4F	  2	6	--------  Upage call (???)
+TCALL	n	  n1	  1	8	--------  Table call (??:)
+BRK		  0F	  1	8	---1-0--  Software interrupt (???)
+
+RET		  6F	  1	5	--------  Return from subroutine (PC is popped)
+RETI		  7F	  1	6	RESTORED  Return from interrupt (PC and PSW are popped)
+
+<u>Stack Operations</u>
+
+<b>INSTR	OPERAND	  OPCODE  BYTES	CYCLES	NVPBHIZC  Operation</b>
+PUSH	A	  2D	  1	4	--------  Push A to stack
+PUSH	X	  4D	  1	4	--------  Push X to stack
+PUSH	Y	  6D	  1	4	--------  Push Y to stack
+PUSH	PSW	  0D	  1	4	--------  Push PSW to stack
+
+POP	A	  AE	  1	4	--------  Pop A from stack
+POP	X	  CE	  1	4	--------  Pop X from stack
+POP	Y	  EE	  1	4	--------  Pop Y from stack
+POP	PSW	  8E	  1	4	RESTORED  Pop PSW from stack :can be used to set PSW bits
+
+<u>Bit Operations</u>
+
+<b>INSTR	OPERAND	  OPCODE  BYTES	CYCLES	NVPBHIZC  Operation</b>
+SET1	dp, bit	  x2	  2	4	--------  Set bit in direct page   : note that with the TASM table provided, these
+CLR1	dp, bit	  y2	  2	4	--------  Clear bit in direct page : instructions are done with "SETx/CLRx dp" where
+						  			   : where x is the bit#
+TSET1	!abs	  0E	  3	6	N-----Z-  Test and set bits with A (???)
+TCLR1	!abs	  4E	  3	6	N-----Z-  Test and clear bits with A (???)
+
+AND1	C,mem,bit  4A	  3	4	-------C  C &= mem:bit     :to use these instructions
+AND1	C,/mem,bit 6A	  3	4	-------C  C &= ~mem:bit    :with the TASM table
+OR1	C,mem,bit  0A	  3	5	-------C  C |= mem:bit     :the syntax is a bit wierd
+OR1	C,/mem,bit 2A	  3	5	-------C  C |= ~mem:bit    : "for MOV1 mem,bit,C" it is:
+EOR1	C,mem,bit  8A	  3	5	-------C  C ^= mem:bit     : MOV1 (mem+(bit<<13)),C
+NOT1	mem,bit	   EA	  3	5	--------  Complement mem:bit
+MOV1	C,mem,bit  AA	  3	4	-------C  C <- mem:bit
+MOV1	mem,bit,C  CA	  3	6	--------  C -> mem:bit
+
+<u>PSW Operations</u>
+
+<b>INSTR	OPERAND	  OPCODE  BYTES	CYCLES	NVPBHIZC  Operation</b>
+CLRC		  60	  1	2	-------0  Clear Carry
+SETC		  80	  1	2	-------1  Set Carry
+NOTC		  ED	  1	3	-------c  Complement Carry
+CLRV		  E0	  1	2	-0--0---  Clear V and H
+CLRP		  20	  1	2	--0-----  Clear DP page to 0
+SETP		  40	  1	2	--1-----  Set DP page to 1
+EI		  A0	  1	3	------1-  Enable Interrupts (but interrupts are not supported)
+DI		  C0	  1	3	------0-  Disable Interrupts (but interrupts are not supported)
+
+<u>Other Commands</u>
+
+<b>INSTR	OPERAND	  OPCODE  BYTES	CYCLES	NVPBHIZC  Operation</b>
+NOP		  00	  1	2	--------  Delay
+SLEEP		  EF	  1	3	--------  standby SLEEP mode
+STOP		  FF	  1	3	--------  standby STOP mode (a good way to crash the program? :)
+</pre>
+<b>Special Notes:</b><br/>
+(X), (Y) are direct page addresses too! Assume addition of 100h if the P flag is set.<br/>
+DIV only works if the resulting quotient is < 200h, The output registers contain garbage if the quotient exceeds this.
+
+<br/><br/>
+<a name="brr"></a>
+<table width="100%" border=0 bgcolor=#DDDDDD><tr><td><font size="+2">Bit Rate Reduction <i>(BRR)</i></font></td></tr></table><br/>
+BRR is the compression format used by the DSP. It's a series of 9 byte blocks containing a header and 8 bytes of sample data. It looks like this:
+<table border=0 bgcolor=#DDffdd><tr><td>
+<pre>
+
+BRR BLOCK
+      8     7     6     5     4     3     2     1     0
+   +-----+-----+-----+-----+-----+-----+-----+-----+-----+
+   | E F | C D | A B | 8 9 | 6 7 | 4 5 | 2 3 | 0 1 | HEAD|  
+   +-----+-----+-----+-----+-----+-----+-----+-----+-----+
+                                               ^
+                                  the lower sample is in the <b>high</b> nibble
+
+BRR HEAD      
+      7     6     5     4     3     2     1     0
+   +-----+-----+-----+-----+-----+-----+-----+-----+
+   |         RANGE         |   FILTER  |LOOP | END |
+   +-----+-----+-----+-----+-----+-----+-----+-----+
+</pre></td></tr></table><br/>
+
+<b>RANGE</b>:<br/>
+  This is a shift value for the 4-bit data.<br/>
+<b>FILTER</b>:<br/>
+  This selects a filter for the decompression.<br/>
+<b>LOOP</b>:<br/>
+  This flag is set if the sample loops (commercial games set this for all blocks in looped samples).<br/>
+<b>END</b>:<br/>
+  When the decoder reads this bit, it will stop the sample (or restart from loop point) and set a bit in <a href="dspendx">ENDX</a>.<br/>
+
+<h2>Example decompression routine</h2>
+<b><font color=red>NOTICE!</font> This is only an approximation of the decompression routine performed by the DSP, look at some BRR compression source-code (like DMV47's) for an accurate example!</b><br/>
+
+<table border=0 bgcolor=#DDDDFF><tr><td>
+<pre>Sample decompression routine:
+1. Read 4 bits from source data. (SAMPLE)
+2. Shift the bits left by RANGE.
+3. Get filter coefficients a&b from table below.
+4. Add LAST_SAMPLE1*a to SAMPLE.
+5. Add LAST_SAMPLE2*b to SAMPLE.
+6. LAST_SAMPLE2 = LAST_SAMPLE1.
+7. LAST_SAMPLE1 = SAMPLE.
+8. Output SAMPLE.
+
+Filter	Coef A 	 Coef B
+  0	0	 0
+  1	0.9375	 0
+  2	1.90625  -0.9375
+  3	1.796875 -0.8125
+</pre></td></tr></table><br/>
+<a name="dspregs"></a>
+<table width="100%" border=0 bgcolor=#DDDDDD><tr><td><font size="+2">DSP Register Map</font></td></tr></table>
+<pre>
+- prefix indiciates that the register will be written to by the DSP during activity.
+
+Addr | Register | Description
+
+For each voice (x=voice#):
+x0   | VOL (L)  | Left channel volume.
+x1   | VOL (R)  | Right channel volume.
+x2   | P (L)    | Lower 8 bits of pitch.
+x3   | P (H)    | Higher 8-bits of pitch.
+x4   | SRCN     | Source number (0-255). (references the source directory)
+x5   | ADSR (1) | If bit7 is set, ADSR is enabled. If cleared GAIN is used.
+x6   | ADSR (2) | These two registers control the ADSR envelope.
+x7   | GAIN     | This register provides function for software envelopes.
+x8   | -ENVX    | The DSP writes the current value of the envelope to this register. (read it)
+x9   | -OUTX    | The DSP writes the current waveform value after envelope multiplication
+                  and before volume multiplication.
+---------------------------------------------------------------------
+0C   | MVOL (L) | Main Volume (left output)
+1C   | MVOL (R) | Main Volume (right output)
+2C   | EVOL (L) | Echo Volume (left output)
+3C   | EVOL (R) | Echo Volume (right output)
+4C   | KON      | Key On (1 bit for each voice)
+5C   | KOF      | Key Off (1 bit for each voice)
+6C   | FLG      | DSP Flags. (used for MUTE,ECHO,RESET,NOISE CLOCK)
+7C   | -ENDX    | 1 bit for each voice.
+---------------------------------------------------------------------
+0D   | EFB      | Echo Feedback
+1D   | ---      | Not used
+2D   | PMON     | Pitch modulation
+3D   | NON      | Noise enable
+4D   | EON      | Echo enable
+5D   | DIR      | Offset of source directory (DIR*100h = memory offset)
+6D   | ESA      | Echo buffer start offset (ESA*100h = memory offset)
+7D   | EDL      | Echo delay, 4-bits, higher values require more memory.
+---------------------------------------------------------------------
+xF   | COEF     | 8-tap FIR Filter coefficients</pre>
+
+<a name="dspvoicevol"></a>
+<table width="100%" border=0 bgcolor=#DDDDDD><tr><td><font size="+2">DSP Voice Register: VOL</font></td></tr></table><br/>
+<table border=0 bgcolor=#DDffdd><tr><td>
+<pre>
+         7     6     5     4     3     2     1     0
+      +-----+-----+-----+-----+-----+-----+-----+-----+
+$x0   | sign|              Volume Left                |  
+      +-----+-----+-----+-----+-----+-----+-----+-----+
+
+         7     6     5     4     3     2     1     0
+      +-----+-----+-----+-----+-----+-----+-----+-----+
+$x1   | sign|              Volume Right               |
+      +-----+-----+-----+-----+-----+-----+-----+-----+
+
+Volume, 8-bit signed value.
+</pre></td></tr></table><br/>
+<table border=0 bgcolor=#EEAAFF><tr><td>
+<pre>
+There are some undocumented quirks (emulated though) that I experienced
+when using these registers (while writing XMSNES). Sometimes the value
+I write gets ignored.. (or something), I'm not really sure what the exact
+problem is.
+</pre></td></td></tr></table>
+<br/>
+<a name="dspvoicepitch"></a>
+<table width="100%" border=0 bgcolor=#DDDDDD><tr><td><font size="+2">DSP Voice Register: P</font></td></tr></table><br/>
+<table border=0 bgcolor=#DDffdd><tr><td>
+<pre>
+         7     6     5     4     3     2     1     0
+      +-----+-----+-----+-----+-----+-----+-----+-----+
+$x2   |               Lower 8-bits of Pitch           |  
+      +-----+-----+-----+-----+-----+-----+-----+-----+
+
+         7     6     5     4     3     2     1     0
+      +-----+-----+-----+-----+-----+-----+-----+-----+
+$x3   |  -  |  -  |   Higher 6-bits of Pitch          |
+      +-----+-----+-----+-----+-----+-----+-----+-----+
+
+Pitch is a 14-bit value.
+</pre></td></tr></table><br/>
+The pitch can be calculated with this formula:
+<table border=0 bgcolor=#DDDDFF><tr><td>
+<pre>Let desired DSP pitch be P.
+
+Pitch->Hz
+               P
+HZ = 32000 * ------
+              2^12
+
+(HZ = P * 7.8125)
+
+Hz->Pitch
+             HZ
+P = 2^12 * -------
+            32000
+
+(P = HZ / 7.8125)
+</pre></td></tr></table><br/>
+The highest pitch will reproduce the sound at approx. 2 octaves higher (~128KHz sample rate).
+The lowest pitch is basically not limited (but you will lose accuracy at lower pitches).
+
+<table border=0 bgcolor=#DDDDFF><tr><td>
+<pre>A few pitch->interval relations...
+
+    400h     800h   1000h     2000h   3FFFh
+-----|--------|-------|---------|-------|-----
+   -2oct   -1oct   original   +1oct   +2oct
+                    sound
+                (best quality!)
+</pre></td></tr></table><br/>
+<a name="dspsrcn"></a>
+<table width="100%" border=0 bgcolor=#DDDDDD><tr><td><font size="+2">DSP Voice Register: SRCN</font></td></tr></table><br/>
+
+<table border=0 bgcolor=#DDffdd><tr><td>
+<pre>
+         7     6     5     4     3     2     1     0
+      +-----+-----+-----+-----+-----+-----+-----+-----+
+$x4   |                 Source Number                 |  
+      +-----+-----+-----+-----+-----+-----+-----+-----+
+</pre></td></tr></table><br/>
+Source number is a reference to the "Source Directory" (see DIR). The DSP will use the sample with this index from the directory. I'm not sure what happens when you change the SRCN when the channel is active, but it probably doesn't have any effect until KON is set.
+<br/><br/>
+<a name="dspadsr"></a>
+<table width="100%" border=0 bgcolor=#DDDDDD><tr><td><font size="+2">DSP Voice Register: ADSR</font></td></tr></table><br/>
+
+<table border=0 bgcolor=#DDffdd><tr><td>
+<pre>
+         7     6     5     4     3     2     1     0
+      +-----+-----+-----+-----+-----+-----+-----+-----+
+$x5   |ENABL|        DR       |          AR           |  
+      +-----+-----+-----+-----+-----+-----+-----+-----+
+
+         7     6     5     4     3     2     1     0
+      +-----+-----+-----+-----+-----+-----+-----+-----+
+$x6   |     SL    |                SR                 |
+      +-----+-----+-----+-----+-----+-----+-----+-----+
+</pre></td></tr></table><br/>
+
+The <i>ENABL</i> bit determines which envelope mode to use. If this bit is set then ADSR is used, otherwise GAIN is operative.<br/>
+My knowledge about DSP stuff is a bit low. Some enlightenment on how the ADSR works would be greatly appreciated! (I will need to learn when I code the envelopes in my new driver)
+<br/><br/>
+<table border=0 bgcolor=#DDffdd><tr><td>
+<pre>
+Table 2.2 ADSR Parameters
+
+
+AR  TIME FROM 0->1    DR  TIME FROM 1->SL    SL  RATIO    SR  TIME FROM 0->1
+00  4.1 sec           00  1.2 sec            00  1/8      00  Infinite
+01  2.5 sec           01  740 msec           01  2/8      01   38 sec
+02  1.5 sec           02  440 msec           02  3/8      02   28 sec
+03  1.0 sec           03  290 msec           03  4/8      03   24 sec
+04  640 msec          04  180 msec           04  5/8      04   19 sec
+05  380 msec          05  110 msec           05  6/8      05   14 sec
+06  260 msec          06   74 msec           06  7/8      06   12 sec
+07  160 msec          07   37 msec           07  8/8      07  9.4 sec
+08   96 msec                                              08  7.1 sec
+09   64 msec                                              09  5.9 sec
+0A   40 msec                                              0A  4.7 sec
+0B   24 msec                                              0B  3.5 sec
+0C   16 msec                                              0C  2.9 sec
+0D   10 msec                                              0D  2.4 sec
+0E    6 msec                                              0E  1.8 sec
+0F    0 msec                                              0F  1.5 sec
+                                                          10  1.2 sec
+                                                          11  880 msec
+                                                          12  740 msec
+     |                                                    13  590 msec
+     |                                                    14  440 msec
+   1 |--------                                            15  370 msec
+     |       /\                                           16  290 msec
+     |      /| \                                          17  220 msec
+     |     / |  \                                         18  180 msec
+     |    /  |   \                                        19  150 msec
+   SL|---/---|-----\__                                    1A  110 msec  
+     |  /    |    |   \___                                1B   92 msec
+     | /     |    |       \_________________              1C   74 msec
+     |/AR    | DR |           SR            \   t         1D   55 msec
+     |-------------------------------------------         1E   37 msec
+     0                                      |             1F   18 msec
+                                                                      
+     key on                                Key off 
+       (cool ascii picture taken from "APU MANUAL IN TEXT BY LEDI")
+</pre></td></tr></table><br/>
+<a name="dspgain"></a>
+<table width="100%" border=0 bgcolor=#DDDDDD><tr><td><font size="+2">DSP Voice Register: GAIN</font></td></tr></table><br/>
+GAIN can be used to implement custom envelopes in your program. There are 5 modes GAIN uses.
+<table border=0 bgcolor=#DDffdd><tr><td>
+<pre>
+DIRECT
+
+         7     6     5     4     3     2     1     0
+      +-----+-----+-----+-----+-----+-----+-----+-----+
+$x7   |  0  |               PARAMETER                 |
+      +-----+-----+-----+-----+-----+-----+-----+-----+
+
+INCREASE (LINEAR)
+         7     6     5     4     3     2     1     0
+      +-----+-----+-----+-----+-----+-----+-----+-----+
+$x7   |  1  |  1  |  0  |          PARAMETER          |  
+      +-----+-----+-----+-----+-----+-----+-----+-----+
+
+INCREASE (BENT LINE)
+
+         7     6     5     4     3     2     1     0
+      +-----+-----+-----+-----+-----+-----+-----+-----+
+$x7   |  1  |  1  |  1  |          PARAMETER          |  
+      +-----+-----+-----+-----+-----+-----+-----+-----+
+
+DECREASE (LINEAR)
+
+         7     6     5     4     3     2     1     0
+      +-----+-----+-----+-----+-----+-----+-----+-----+
+$x7   |  1  |  0  |  0  |          PARAMETER          |  
+      +-----+-----+-----+-----+-----+-----+-----+-----+
+
+DECREASE (EXPONENTIAL)
+
+         7     6     5     4     3     2     1     0
+      +-----+-----+-----+-----+-----+-----+-----+-----+
+$x7   |  1  |  0  |  1  |          PARAMETER          |  
+      +-----+-----+-----+-----+-----+-----+-----+-----+
+</pre></td></tr></table><br/>
+<b>Direct:</b> The value of GAIN is set to PARAMETER.<br/>
+<b>Increase (Linear):</b> GAIN slides to 1 with additions of 1/64.<br/>
+<b>Increase (Bent Line):</b> GAIN slides up with additions of 1/64 until it reaches 3/4, then it slides up to 1 with additions of 1/256.<br/>
+<b>Decrease (Linear):</b> GAIN slides down to 0 with subtractions of 1/64.<br/>
+<b>Decrease (Exponential):</b> GAIN slides down exponentially by getting multiplied by 255/256.<br/><BR/>
+<table border=0 bgcolor=#DDffdd><tr><td>
+<pre>
+Table 2.3 GAIN PARAMTERS
+
+            TIME FROM 0->1                   TIME FROM 1->0
+PARAM	INCREASE	INCREASE	DECREASE	DECREASE
+VALUE	LINEAR		BENTLINE	LINEAR		EXPONENTIAL
+
+00	INFINITE	INFINITE	INFINITE	INFINITE
+01	4.1s		7.2s		4.1s		38s	
+02	3.1s		5.4s		3.1s		28s	
+03	2.6s		4.6s		2.6s		24s	
+04	2.0s		3.5s		2.0s		19s	
+05	1.5s		2.6s		1.5s		14s	
+06	1.3s		2.3s		1.3s		12s	
+07	1.0s		1.8s		1.0s		9.4s	
+08	770ms		1.3s		770ms		7.1s	
+09	640ms		1.1s		640ms		5.9s	
+0A	510ms		900ms		510ms		4.7s	
+0B	380ms		670ms		380ms		3.5s	
+0C	320ms		560ms		320ms		2.9s	
+0D	260ms		450ms		260ms		2.4s	
+0E	190ms		340ms		190ms		1.8s	
+0F	160ms		280ms		160ms		1.5s	
+10	130ms		220ms		130ms		1.2s	
+11	96ms		170ms		96ms		880ms	
+12	80ms		140ms		80ms		740ms	
+13	64ms		110ms		64ms		590ms	
+14	48ms		84ms		48ms		440ms	
+15	40ms		70ms		40ms		370ms	
+16	32ms		56ms		32ms		290ms	
+17	24ms		42ms		24ms		220ms	
+18	20ms		35ms		20ms		180ms	
+19	16ms		28ms		16ms		150ms	
+1A	12ms		21ms		12ms		110ms	
+1B	10ms		18ms		10ms		92ms	
+1C	8ms		14ms		8ms		74ms	
+1D	6ms		11ms		6ms		55ms	
+1E	4ms		7ms		4ms		37ms	
+1F	2ms		3.5ms		2ms		18ms	
+</pre></td></tr></table><br/>
+<a name="dspenvx"></a>
+<table width="100%" border=0 bgcolor=#DDDDDD><tr><td><font size="+2">DSP Voice Register: ENVX</font></td></tr></table><br/>
+<table border=0 bgcolor=#DDffdd><tr><td>
+<pre>
+ENVX
+
+         7     6     5     4     3     2     1     0
+      +-----+-----+-----+-----+-----+-----+-----+-----+
+$x8   |  0  |                 VALUE                   |  
+      +-----+-----+-----+-----+-----+-----+-----+-----+
+
+7-bit unsigned value
+</pre></td></tr></table><br/>
+ENVX gets written to by the DSP. It contains the present ADSR/GAIN envelope value.
+
+<br/><br/>
+<a name="dspoutx"></a>
+<table width="100%" border=0 bgcolor=#DDDDDD><tr><td><font size="+2">DSP Voice Register: OUTX</font></td></tr></table><br/>
+<table border=0 bgcolor=#DDffdd><tr><td>
+<pre>
+OUTX
+
+         7     6     5     4     3     2     1     0
+      +-----+-----+-----+-----+-----+-----+-----+-----+
+$x9   | sign|                 VALUE                   |  
+      +-----+-----+-----+-----+-----+-----+-----+-----+
+
+8-bit signed value
+</pre></td></tr></table><br/>
+OUTX is written to by the DSP. It contains the present wave height multiplied by the ADSR/GAIN envelope value. It isn't multiplied by the voice volume though.
+<br/><br/>
+<a name="dspmvol"></a>
+<table width="100%" border=0 bgcolor=#DDDDDD><tr><td><font size="+2">DSP Register: MVOL/EVOL</font></td></tr></table><br/>
+<table border=0 bgcolor=#DDffdd><tr><td>
+<pre>
+         7     6     5     4     3     2     1     0
+      +-----+-----+-----+-----+-----+-----+-----+-----+
+$0C   | sign|         Left Output Main Volume         |  
+      +-----+-----+-----+-----+-----+-----+-----+-----+
+
+         7     6     5     4     3     2     1     0
+      +-----+-----+-----+-----+-----+-----+-----+-----+
+$1C   | sign|        Right Output Main Volume         |
+      +-----+-----+-----+-----+-----+-----+-----+-----+
+
+         7     6     5     4     3     2     1     0
+      +-----+-----+-----+-----+-----+-----+-----+-----+
+$2C   | sign|         Left Output Echo Volume         |  
+      +-----+-----+-----+-----+-----+-----+-----+-----+
+
+         7     6     5     4     3     2     1     0
+      +-----+-----+-----+-----+-----+-----+-----+-----+
+$3C   | sign|        Right Output Echo Volume         |  
+      +-----+-----+-----+-----+-----+-----+-----+-----+
+</pre></td></tr></table><br/>
+Main/Echo volume! 8-bit signed values. Regular sound is scaled by the main volume. Echoed sound is scaled by the echo volume.<br/><br/>
+<table border=0 bgcolor=#EEAAFF><tr><td>
+<pre>
+I also had a problem with writing to these registers,
+sometimes my writes would get ignored, or zeroed???
+</pre></td></tr></table>
+<br/>
+<a name="dspkon"></a>
+<table width="100%" border=0 bgcolor=#DDDDDD><tr><td><font size="+2">DSP Registers: KON/KOF</font></td></tr></table><br/>
+<table border=0 bgcolor=#DDffdd><tr><td>
+<pre>
+
+Key-On
+         7     6     5     4     3     2     1     0
+      +-----+-----+-----+-----+-----+-----+-----+-----+
+$4C   |VOIC7|VOIC6|VOIC5|VOIC4|VOIC3|VOIC2|VOIC1|VOIC0|  
+      +-----+-----+-----+-----+-----+-----+-----+-----+
+
+Key-Off
+         7     6     5     4     3     2     1     0
+      +-----+-----+-----+-----+-----+-----+-----+-----+
+$5C   |VOIC7|VOIC6|VOIC5|VOIC4|VOIC3|VOIC2|VOIC1|VOIC0|  
+      +-----+-----+-----+-----+-----+-----+-----+-----+
+</pre></td></tr></table><br/>
+
+Writing bits to KON will start/restart the voice specified. Writing bits to KOF will cause the voice to fade out. The fade is done with subtraction of 1/256 values and takes about 8msec.<br/><br/>
+It is said that you should not write to KON/KOF in succession, you have to wait a little while (a few NOPs).
+<br/><br/>
+<a name="dspflg"></a>
+<table width="100%" border=0 bgcolor=#DDDDDD><tr><td><font size="+2">DSP Register: FLG</font></td></tr></table><br/>
+<table border=0 bgcolor=#DDffdd><tr><td>
+<pre>
+
+Flags
+         7     6     5     4     3     2     1     0
+      +-----+-----+-----+-----+-----+-----+-----+-----+
+$6C   |RESET|MUTE |~ECEN|         NOISE CLOCK         |  
+      +-----+-----+-----+-----+-----+-----+-----+-----+
+</pre></td></tr></table><br/>
+<b>RESET:</b> Soft reset. Writing a '1' here will set all voices in a state of "Key-On suspension" (???). MUTE is also set. A soft-reset gets triggered upon power-on.<br/>
+<b>MUTE:</b> Mutes all channel output.<br/>
+<b>ECEN:</b> ~Echo enable. A <b>'0'</b> here enables echo data to be written into external memory (the memory your program/data is in!). Be careful when enabling it, it's quite easy to crash your program with the echo hardware!<br/>
+<b>NOISE CLOCK:</b> Designates the frequency for the white noise.<br/><br/>
+
+<table border=3><tr><td>VALUE</td><td>FREQ</td><td>VALUE</td><td>FREQ</td><td>VALUE</td><td>FREQ</td><td>VALUE</td><td>FREQ</td></tr>
+<tr>
+<td><center>00</center></td><td><center>0 Hz</center</td>
+<td><center>08</center></td><td><center>83 Hz</center</td>
+<td><center>10</center></td><td><center>500 Hz</center</td>
+<td><center>18</center></td><td><center>3.2 KHz</center</td></tr><tr>
+
+<td><center>01</center></td><td><center>16 KHz</center</td>
+<td><center>09</center></td><td><center>100 Hz</center</td>
+<td><center>11</center></td><td><center>667 Hz</center</td>
+<td><center>19</center></td><td><center>4.0 KHz</center</td></tr><tr>
+
+<td><center>02</center></td><td><center>21 Hz</center</td>
+<td><center>0A</center></td><td><center>125 Hz</center</td>
+<td><center>12</center></td><td><center>800 Hz</center</td>
+<td><center>1A</center></td><td><center>5.3 KHz</center</td></tr><tr>
+
+<td><center>03</center></td><td><center>25 Hz</center</td>
+<td><center>0B</center></td><td><center>167 Hz</center</td>
+<td><center>13</center></td><td><center>1.0 KHz</center</td>
+<td><center>1B</center></td><td><center>6.4 KHz</center</td></tr><tr>
+
+<td><center>04</center></td><td><center>31 Hz</center</td>
+<td><center>0C</center></td><td><center>200 Hz</center</td>
+<td><center>14</center></td><td><center>1.3 KHz</center</td>
+<td><center>1C</center></td><td><center>8.0 KHz</center</td></tr><tr>
+
+<td><center>05</center></td><td><center>42 Hz</center</td>
+<td><center>0D</center></td><td><center>250 Hz</center</td>
+<td><center>15</center></td><td><center>1.6 KHz</center</td>
+<td><center>1D</center></td><td><center>10.7 KHz</center</td></tr><tr>
+
+<td><center>06</center></td><td><center>50 Hz</center</td>
+<td><center>0E</center></td><td><center>333 Hz</center</td>
+<td><center>16</center></td><td><center>2.0 KHz</center</td>
+<td><center>1E</center></td><td><center>16 KHz</center</td></tr><tr>
+
+<td><center>07</center></td><td><center>63 Hz</center</td>
+<td><center>0F</center></td><td><center>400 Hz</center</td>
+<td><center>17</center></td><td><center>2.7 KHz</center</td>
+<td><center>1F</center></td><td><center>32 KHz</center</td></tr>
+</table>
+</font>
+
+<br/>
+<a name="dspendx"></a>
+<table width="100%" border=0 bgcolor=#DDDDDD><tr><td><font size="+2">DSP Register: ENDX</font></td></tr></table><br/>
+This register is written to during DSP activity.
+<table border=0 bgcolor=#DDffdd><tr><td>
+<pre>
+
+ENDX
+         7     6     5     4     3     2     1     0
+      +-----+-----+-----+-----+-----+-----+-----+-----+
+$7C   |VOIC7|VOIC6|VOIC5|VOIC4|VOIC3|VOIC2|VOIC1|VOIC0|  
+      +-----+-----+-----+-----+-----+-----+-----+-----+
+</pre></td></tr></table><br/>
+Each voice gets 1 bit. If the bit is set then it means the <a href="#brr">BRR</a> decoder has reached the last compressed block in the sample.
+
+<br/><br/>
+<a name="dspefb"></a>
+<table width="100%" border=0 bgcolor=#DDDDDD><tr><td><font size="+2">DSP Register: EFB</font></td></tr></table><br/>
+Writing to this register sets the Echo Feedback. It's an 8-bit signed value. Some more information on how the feedback works would be nice...
+<table border=0 bgcolor=#DDffdd><tr><td>
+<pre>
+
+EFB
+         7     6     5     4     3     2     1     0
+      +-----+-----+-----+-----+-----+-----+-----+-----+
+$0D   | sign|             Echo Feedback               |  
+      +-----+-----+-----+-----+-----+-----+-----+-----+
+</pre></td></tr></table><br/>
+
+<a name="dsppmon"></a>
+<table width="100%" border=0 bgcolor=#DDDDDD><tr><td><font size="+2">DSP Register: PMON</font></td></tr></table><br/>
+Pitch modulation, I have no idea how it works, but here is a guess..
+<table border=0 bgcolor=#DDffdd><tr><td>
+<pre>
+
+PMON
+         7     6     5     4     3     2     1     0
+      +-----+-----+-----+-----+-----+-----+-----+-----+
+$2D   |VOIC7|VOIC6|VOIC5|VOIC4|VOIC3|VOIC2|VOIC1|  -  |
+      +-----+-----+-----+-----+-----+-----+-----+-----+
+</pre></td></tr></table><br/>
+Pitch modulation multiplies the current pitch of the channel by OUTX of the previous channel. <i>(P (modulated) = P[X] * (1 + OUTX[X-1])</i><br/>
+So a sine wave in the previous channel would cause some vibrato on the modulated channel. Note that OUTX is before volume multiplication, so you can have a silent channel for modulating.
+<br/><br/>
+<a name="dspnon"></a>
+<table width="100%" border=0 bgcolor=#DDDDDD><tr><td><font size="+2">DSP Register: NON</font></td></tr></table><br/>
+Noise enable.
+<table border=0 bgcolor=#DDffdd><tr><td>
+<pre>
+
+NON
+         7     6     5     4     3     2     1     0
+      +-----+-----+-----+-----+-----+-----+-----+-----+
+$3D   |VOIC7|VOIC6|VOIC5|VOIC4|VOIC3|VOIC2|VOIC1|VOIC0|  
+      +-----+-----+-----+-----+-----+-----+-----+-----+
+</pre></td></tr></table><br/>
+When the noise enable bit is specified for a certain channel, white noise is issued instead of sample data. The frequency of the white noise is set in the <a href="dspflg">FLG</a> register. The white noise still requires a (dummy) sample to determine the length of sound (or unlimited sound if the sample loops).
+
+<br/><br/>
+<a name="dspeon"></a>
+<table width="100%" border=0 bgcolor=#DDDDDD><tr><td><font size="+2">DSP Register: EON</font></td></tr></table><br/>
+Echo enable.
+<table border=0 bgcolor=#DDffdd><tr><td>
+<pre>
+
+EON
+         7     6     5     4     3     2     1     0
+      +-----+-----+-----+-----+-----+-----+-----+-----+
+$4D   |VOIC7|VOIC6|VOIC5|VOIC4|VOIC3|VOIC2|VOIC1|VOIC0|  
+      +-----+-----+-----+-----+-----+-----+-----+-----+
+</pre></td></tr></table><br/>
+This register enables echo effects for the specified channel(s).
+
+<br/><br/>
+<a name="dspdir"></a>
+<table width="100%" border=0 bgcolor=#DDDDDD><tr><td><font size="+2">DSP Register: DIR</font></td></tr></table><br/>
+Source Directory Offset.
+<table border=0 bgcolor=#DDffdd><tr><td>
+<pre>
+
+DIR
+         7     6     5     4     3     2     1     0
+      +-----+-----+-----+-----+-----+-----+-----+-----+
+$5D   |                  Offset value                 |  
+      +-----+-----+-----+-----+-----+-----+-----+-----+
+</pre></td></tr></table><br/>
+This register points to the source(sample) directory in external RAM. The pointer is calculated by <i>Offset*100h</i>.
+<br/><br/>
+The source directory contains sample start and loop point offsets. Its a simple array of 16-bit values.<br/>
+Basic structure:
+<table border=0 bgcolor=#DDffdd><tr><td>
+<pre>
+
+SAMPLE DIRECTORY
+
+OFFSET	SIZE	DESC
+dir+0	16-BIT	SAMPLE-0 START
+dir+2	16-BIT	SAMPLE-0 LOOP START
+dir+4	16-BIT	SAMPLE-1 START
+dir+6	16-BIT	SAMPLE-1 LOOP START
+dir+8	16-BIT	SAMPLE-2 START
+...................................etc  
+
+This can continue for up to 256 samples. (SRCN can only reference 256 samples)
+</pre></td></tr></table><br/>
+
+<br/><br/>
+<a name="dspesa"></a>
+<table width="100%" border=0 bgcolor=#DDDDDD><tr><td><font size="+2">DSP Register: ESA</font></td></tr></table><br/>
+Echo data start address.
+<table border=0 bgcolor=#DDffdd><tr><td>
+<pre>
+
+ESA
+         7     6     5     4     3     2     1     0
+      +-----+-----+-----+-----+-----+-----+-----+-----+
+$6D   |                  Offset value                 |  
+      +-----+-----+-----+-----+-----+-----+-----+-----+
+</pre></td></tr></table><br/>
+This register points to an area of memory to be used by the echo buffer. Like <a href="#dspdir">DIR</a> its value is multiplied by 100h.
+
+<br/><br/>
+<a name="dspedl"></a>
+<table width="100%" border=0 bgcolor=#DDDDDD><tr><td><font size="+2">DSP Register: EDL</font></td></tr></table><br/>
+Echo delay size.
+<table border=0 bgcolor=#DDffdd><tr><td>
+<pre>
+
+EDL
+         7     6     5     4     3     2     1     0
+      +-----+-----+-----+-----+-----+-----+-----+-----+
+$7D   |  -  |  -  |  -  |  -  |      Echo Delay       |  
+      +-----+-----+-----+-----+-----+-----+-----+-----+
+</pre></td></tr></table><br/>
+EDL specifies the delay between the main sound and the echoed sound. The delay is calculated as <i>EDL * 16ms</i>.<br/><br/>
+Increased amounts of delay require more memory. The amount of memory required is <i>EDL * 2KBytes</i>. The memory region used will be <i>[ESA] -> [ESA + EDL*800h -1]</i>. If EDL is zero, 4 bytes of memory at <i>[ESA] -> [ESA+3]</i> will still be used.
+<br/><br/>
+
+<a name="dspcoef"></a>
+<table width="100%" border=0 bgcolor=#DDDDDD><tr><td><font size="+2">DSP Register: COEF</font></td></tr></table><br/>
+Echo FIR filter coefficients.
+<table border=0 bgcolor=#DDffdd><tr><td>
+<pre>
+
+COEF
+         7     6     5     4     3     2     1     0
+      +-----+-----+-----+-----+-----+-----+-----+-----+
+$xF   | sign|         Filter Coefficient X            |  
+      +-----+-----+-----+-----+-----+-----+-----+-----+
+</pre></td></tr></table><br/>
+The 8-bytes at $0F,$1F,$2F,$3F,$4F,$5F,$6F,$7F are used by the 8-tap FIR filter. I really have no idea how FIR filters work... but the filter is applied to the echo output.
+
+<br/><br/>
+<a name="echofunc"></a>
+<table width="100%" border=0 bgcolor=#DDDDDD><tr><td><font size="+2">DSP Echo Function</font></td></tr></table><br/>
+Ah, the spotlight of SPC music, the echoing!<br/>
+A short review of the registers used:<br/>
+<b><a href="#dspmvol">EVOL</a></b><br/>
+This is the volume multiplier of the echo output. Note that even if the Main volume is 0, the echo volume can still be heard. It is independant from the main volume.<br/>
+<b><a href="#dspflg">FLG</a></b><br/>
+Flags register. The "Echo Enable" bit is contained in here.<br/>
+<b><a href="#dspefb">EFB</a></b><br/>
+Echo Feedback. This is an 8-bit signed value used for feedback multiplication.<br/>
+<b><a href="#dspeon">EON</a></b><br/>
+Echo Channel Enable. One bit per channel to indicate that it should be echoed.<br/>
+<b><a href="#dspesa">ESA</a></b><br/>
+Echo Start Address. A pointer to the area of memory designated for the echoing buffer.<br/>
+<b><a href="#dspedl">EDL</a></b><br/>
+Echo Delay. 4-bit value that designates both the delay time for the echo, and the size of the echoing buffer. <i>(d*16ms time) (d*2KB memory)</i><br/>
+<b><a href="#dspcoef">COEF</a></b><br/>
+Echo FIR Filter Coefficients. Again, I have no idea how the filter works. A setting of 127,0,0,0,0,0,0,0 will result in the original sound.<br/>
+<br/>
+To enable echoing:
+<table border=0 bgcolor=#DDDDFF><tr><td>
+<pre>
+Initialization, order of operation is not of concern
+*. Set ESA to memory region to be used.
+*. Set EDL to desired echo delay. You will require 2KB*EDL of space for the echoing buffer.
+*. Set the filter coefficients. A setting of 127,0,0,0,0,0,0,0 won't affect the sound output.
+*. Set Echo Feedback.
+*. Enable echo for desired channels (EON).
+
+Startup:
+1. <font size="+2" color=red><b>Delay 240ms</b></font> see below.
+2. Set EVOL to desired volume.
+3. Write '0' to the ECEN bit in the FLG register.
+4. Echo is enabled.
+5. Freely change all parameters (except ESA,EDL).
+</pre></td></tr></table><br/>
+<table border=0 bgcolor=#FFCCCC><tr><td>
+Why the big red <b>delay</b>?? This is because the echo hardware doesn't actually read the buffer designation values until it reaches the END of the old buffer! (the old buffer sizes could be uninitialized garbage). There is no way to determine the write position.
+240ms is the max delay time, so it is the safe value to use. Another method is to read EDL (d) before you set it, and delay <i>d*16ms</i>.
+</td></tr></table><br/>
+<b>Another special note</b>:<br/>
+Echo writing DOES wrap around the memory edge, I had my program crash when the ESA was at the very end of memory (and I didn't delay properly). It wrote to the end... and then wrapped around to munch all my DP memory all the way to the program code.<br/><br/>
+<b>PS:</b></br>
+Lower your headphone volume when playing with the EFB register. ;)
+<br/><br/>
+<a name="soundguide"></a>
+<table width="100%" border=0 bgcolor=#DDDDDD><tr><td><font size="+2">Precautions</font></td></tr></table>
+<h3>Don't use an excessive sound data compression ratio.</h3>
+Samples with low sample rates may cause distortion. And they don't convert to BRR very well.
+<h3>Take care that the mixed output doesn't exceed the maximum waveform limit.</h3>
+If the mixed waveform (all 8-channels together) overflows, some distortion noise will be produced.
+<h3>Check for monaural output!</h3>
+This will mess up your cool 'surreal' effect when your setting one side of the channel volume to negative.
+<h3>Sustain continuous sample flow.</h3>
+Sampled data that isn't continuous will cause 'clicking' sounds to appear. A very obvious example is when you disable a channel by cutting the volume. A quick fade-out should be used instead.
+<br/><br/>
+<a name="bootloader"></a>
+<table width="100%" border=0 bgcolor=#DDDDDD><tr><td><font size="+2">IPL ROM</font></td></tr></table><br/>
+The IPL ROM is a 64 byte image that is built into the SPC to handle data transfers from the SNES. This code is ran at power-on/reset.<br/>
+Here is the code for the IPL ROM:<br/><br/>
+<table border=0 bgcolor=#EEee88><tr><td>
+<pre>
+; Commented SPC-700 IPL ROM
+; by eKid
+
+; Original dissasembly from SID-SPC written by Alfatech/Triad
+
+; This code assembles with TASM
+
+;-------------------------------------------------------------------------------
+; DEFINITIONS
+;-------------------------------------------------------------------------------
+
+WriteAdr	=$00	; Write address during transfers
+Port0		=$F4	; I/O ports
+Port1		=$F5
+Port2		=$F6
+Port3		=$F7
+
+.ORG $FFC0
+;-------------------------------------------------------------------------------
+Start:
+;-------------------------------------------------------------------------------
+
+; set stack pointer to $EF
+;   "why EF? page1 has 256 memory bytes!"
+;   because the value in X is reused in the page0 clear (saves 2 bytes)
+;   the higher 16 bytes of page0 contain hardware registers.
+
+	mov	x, #$EF
+	mov	sp, x
+
+; clear zero-page memory
+
+	mov	a, #$00
+clrpg0:	mov	(x), a
+	dec	x
+	bne	clrpg0
+
+; indicate ready signal, write 0BBAAh to ports 0/1
+
+	mov	Port0, #$AA
+	mov	Port1, #$BB
+
+; idle until the SNES sends the transfer signal to port0 ($CC)
+; and then process data
+
+wait1:	cmp	$F4, #$CC
+	bne	wait1
+	
+	bra	ProcessData
+
+;-------------------------------------------------------------------------------
+TransferData:
+;-------------------------------------------------------------------------------
+
+; wait until Port0 gets zero written to it
+
+wait2:	mov	y, Port0
+	bne	wait2
+
+; this is the main transfer loop
+
+transfer_bytes:
+	cmp	y, Port0	; check for data
+	bne	check_end
+	
+	mov	a, Port1	; read byte of data
+	mov	Port0, y	; reply to SNES (snes can write new data now)
+	mov	[WriteAdr]+Y, A	; write data to memory
+	inc	y		; increment index
+	bne	transfer_bytes	; loop
+
+; index overflowed, increment high byte of WriteAdr
+	
+	inc	WriteAdr+1
+
+check_end:
+
+; if y - port0 < 0 then the transfer is complete (SNES added 2 or more)
+
+	bpl	transfer_bytes
+
+; confirm this! we may have checked with invalid data
+; also, this is used when the "inc WriteAdr+1" path is taken
+;         (when transferring to $8000 or higher)
+
+	cmp	y, Port0
+	bpl	transfer_bytes
+
+; transfer is finished, process data again
+
+;-------------------------------------------------------------------------------
+ProcessData:
+;-------------------------------------------------------------------------------
+
+; read word from ports 2/3
+; word may be data write address,
+; or program entry point (depending on port0)
+
+	movw	ya, Port2
+	movw	WriteAdr, ya
+	movw	ya, $F4
+	mov	Port0, a	; reply to SNES with PT0 data
+	mov	a, y
+	mov	x, a
+
+; if port1 wasn't zero, then start the transfer
+
+	bne	TransferData
+
+; otherwise...
+; jump to program entry point
+; X is zero in this case, so this
+; is an effective "movw pc, WriteAdr"
+	
+	jmp	[WriteAdr+X]
+
+;-------------------------------------------------------------------------------
+ResetVector:
+;-------------------------------------------------------------------------------
+	
+	di
+	stop
+
+; When program flow is passed to the user code, the Accumulator
+; and X/Y index registers are zero, and the SP is initialized to $EF.
+; Also, page0 memory is cleared. (EXCEPT for the word at $00)
+
+.end
+</pre></td></tr></table>
+<h2>Uploading Software</h2>
+Here is the upload protocol...(almost a copy :)<br/>
+<pre>SPC SIDE     |   SNES SIDE
+---------------------------------------------------
+PORT0=0AAh  >>>                                    | Stage 1, "is the spc ready to receive data??"
+PORT1=0BBh  >>>  Confirm 0AABBh                    | 
+---------------------------------------------------
+            <<<  PORT1 = NOT0                      | Stage 2, initialize transfer
+            <<<  PORT2/3 = TRANSFER ADDRESS LO/HI  |
+            <<<  PORT0 = 0CCh                      |
+PORT0=PT0   >>>  (confirm this)                    | PT0 is data received in port0 on the SPC side
+---------------------------------------------------| the spc will mimic stuff you put in port0
+                DATA TRANSFER START                |
+---------------------------------------------------|
+            <<<  PORT1 = FIRST BYTE OF DATA        | Stage 3, start transfer
+            <<<  PORT0 = 00h                       |
+PORT0=PT0   >>>  (confirm this)                    |
+---------------------------------------------------
+            <<<  PORT1 = DATA                      | Stage 4, transfer data
+            <<<  PORT0 = LAST PORT0 DATA +1        |
+PORT0=PT0   >>>  (confirm this)                    |
+--------------------------------------------------------
+Sending the next block...                               |
+            <<<  PORT1 = NOT 0                          | Stage 5, next block
+            <<<  PORT2/3 = TRANSFER ADDRESS             |
+            <<<  PORT0 = PREVIOUS PORT0 DATA + 2 to 127 | NOTE: this value cannot be zero, add another 1 or so if it is
+PORT0=PT0   >>>  (confirm this)                         |
+                 jump to DATA TRANSFER START            |
+------------------------------------------------------------
+After the last block...                                     |  Stage 6, start program
+            <<<  PORT1 = 0                                  |  
+            <<<  PORT2/3 = PROGRAM ENTRY POINT              |  
+            <<<  PORT0 = PREVIOUS PORT0 DATA + 2 to 127     |   
+PORT0=PT0   >>>  (confirm this)                             |
+                 (assume the code is running successfully)  |
+------------------------------------------------------------</pre>
+
+
+<table border=0 bgcolor=#FFCCCC><tr><td>
+<pre>Warning! If this routine is <b><i>interrupted</i></b>, the SPC may time-out! (or something)
+Your program will then get stuck in an infinite loop of waiting for the SPC reply.
+Inhibit interrupts during the transfer protocol.</pre></td></tr></table><br/>
+
+Have a look at my booting procedure (does not support multiple blocks):
+<table border=0 bgcolor=#EEee88><tr><td>
+<pre>;--------------------------------------------
+snakBoot:
+;--------------------------------------------
+
+; wait for ready signal
+
+-	ldx	REG_APUI00
+	cpx	#0BBAAh
+	bne	-
+
+; start transfer:
+; port1   = !0
+; port2/3 = transfer address ( 0200h )
+; port0   = 0CCh
+	
+	lda	#1
+	sta	REG_APUI01
+	inc	a
+	stz	REG_APUI02
+	sta	REG_APUI03
+	
+	lda	#0CCh
+	sta	REG_APUI00
+	
+; wait for SPC
+	
+-	cmp	REG_APUI00
+	bne	-
+	
+; ready to transfer...
+	
+	lda.w	snakd_binary	; read first byte
+	xba
+	lda	#0
+	ldx	#1
+	bra	sb_start
+
+; transfer bytes
+	
+sb_send:
+	xba
+	
+	lda.w	snakd_binary,x	; read byte
+	inx
+	xba
+-	cmp	REG_APUI00
+	bne	-
+
+	ina			; add 1 to counter
+	
+sb_start:	
+	rep	#20h
+	sta	REG_APUI00	; write to port1
+	sep	#20h
+	
+	cpx	#snakd_size	; all bytes transferred?
+	bcc	sb_send		; no, then send next byte
+
+; all bytes transferred
+
+-	cmp	REG_APUI00	; sync
+	bne	-
+
+	ina			; add 2 or so...
+	ina
+	
+	stz	REG_APUI01	; port1=0
+	ldx	#0200h		; write program entry point
+	stx	REG_APUI02
+	sta	REG_APUI00	; write validation
+	
+-	cmp	REG_APUI00	; final sync
+	bne	-
+	
+; snakdriver is installed
+	
+	rtl
+</pre></td></tr></table>
+<br/>
+In English:<br/>
+<table border=0 bgcolor=#DDDDFF><tr><td>
+<pre>1. Wait for the word in ports0/1 to read $BBAA
+2. Write a nonzero value in port1 and the transfer address in ports 2/3.
+3. Write 0CCh to port0.
+4. Wait for the SPC to mimic the data it receives in port0 (0CCh in this case). The loader only uses port0 for replies.
+5. Start a counter at 00h, write the first byte of data to port1, and write the counter to port0.
+6. Wait for the SPC to reply with 00h (yes, it mimics).
+7. Write the next data byte to port1, increment the counter, write the counter to port0.
+8. Wait for the SPC to reply with the counter value.
+9. Goto 7 if there are more bytes to be transferred.
+10. Write 0 to port1, the program entry point to port2/3, and then finally... add 2 (or more) to the counter and write to port0.
+11. (Optional) Wait for the SPC to mimic that last byte...
+</pre></td></tr></table><br/>
+<a name="closing"></a>
+<table width="100%" border=0 bgcolor=#DDDDDD><tr><td><font size="+2">Closing Words</font></td></tr></table><br/>
+<font size="+3">LONG LIVE THE SNES AND ITS COPROCESSOR!</font><br/>
+This has been fun... Special thanks to all the snesdev community for their information and help!<br/>
+
+If you have found any errors, <font color=red>please tell me</font>! I typed this up pretty quickly and didn't do much proofreading.<br/><br/>
+Questions, Comments, Mistakes, Anything:<br/>
+<b>EMAIL:</b> mukunda51 [AT] hotmail [DOT] com<br/>
+<b>IRC:</b> eKid on EFNet - #snesdev
+<br/><br/>
+<table width="100%" border=0 bgcolor=#DDDDDD><tr><td><font size="-1"><center><b>Last updated: 9:22 PM 11/15/2007</b></center></font></td></tr></table>
+
+</body>
