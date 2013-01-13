@@ -202,12 +202,14 @@ SPC700js.instance.cpu.prototype = {
 		}
 	},
 	push:function(instance, byteValue) {
-		instance.ram.set(instance, this.SP, byteValue);
+		instance.ram.set(instance, 0x100 + this.SP, byteValue);
 		this.SP--;
+		if (this.SP<0) this.SP+=256;
 	},
 	pop:function(instance) {
-		this.SP--;
-		return instance.ram.get(instance, this.SP);
+		this.SP++;
+		if (this.SP>255) this.SP-=256;
+		return instance.ram.get(instance, 0x100 + this.SP);
 	}
 };
 
