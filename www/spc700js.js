@@ -577,37 +577,81 @@ SPC700js.instance.ram.prototype = {
 	}
 };
 SPC700js.instance.disassembled = function() {
-	this.map={};
-	this.available=[];
-	this.targets={};
+	this.map={};		    // map from memory address to opcode objects
+	this.available=[];      // what addresses are good addresses to disassemble
+	this.targets={};		// map of memory addresses to places that jump to it
+	this.requires={};       // map of extra pieces(registers, ram) that each disassembled opcode requires
+	this.required={};       // map from memory locations to disassembled opcodes that require them
+	this.pausedEvents = false;
+	this.dirtyData = {};
 };
 SPC700js.instance.disassembled.prototype = {
+	initialSubscribe:function(event, callback) {
+		if (event=='disassembled.availableAdded') {
+			for (var a=0; a<this.available.length; a++) {
+				callback(this.available[a]);
+			}
+		}
+		else if (event=='disassembled.opcodeAdded') {
+			var addresses=Object.keys(this.map);
+			for (var a=0; a<addresses.length; a++) {
+				callback({'location':parseInt(addresses[a]), 'opcode':this.map[addresses[a]]});
+			}
+		}
+	},
+	pauseEvents:function(instance) {
+		this.pausedEvents = true;
+		this.dirtyData = {};
+	},
+	unpauseEvents:function(instance) {
+		this.pausedEvents = false;
+		var addresses = Object.keys(this.dirtyData);
+		addresses.sort();
+		instance.events.sendEvent(instance, 'disassembled.changed', this.map);
+		for (var i = 0; i < addresses.length; i++) {
+			var address = parseInt(addresses[i]);
+			instance.events.sendEvent(instance, 'disassembled.opcodeAdded', {'location':address, 'opcode':this.get(instance, address)});
+		}
+		for (var a=0; a<this.available.length; a++) {
+			instance.events.sendEvent(instance, 'disassembled.availableAdded', this.available[a]);
+		}
+	},
 	addTarget:function(instance, srcLocation, dstLocation) {
 		if (!( dstLocation in this.targets))
 			this.targets[dstLocation]=[];
-		if (!( srcLocation in this.targets[dstLocation]))
+		if (this.targets[dstLocation].indexOf(srcLocation)==-1)
 			this.targets[dstLocation].push(srcLocation);
 		this.targets[dstLocation].sort();
 	},
 	getTarget:function(instance, dstLocation) {
-		if (dstLocation in this.targets)
-			return this.targets[dstLocation];
-		return [];
+		var retval = [];
+		if (this.targets.hasOwnProperty(dstLocation)) {
+			retval = this.targets[dstLocation];
+		}
+		return retval;
 	},
 	addAvailable:function(instance, location) {
-		if (!(location in this.available) && location)
+		if (location && !(this.available.hasOwnProperty(location)) && !(this.map.hasOwnProperty(location)))
+		{
 			this.available.push(location);
+			this.available.sort();
+			if (!this.pausedEvents)
+				instance.events.sendEvent(instance, 'disassembled.availableAdded', location);
+		}
 	},
 	parseNextAvailable:function(instance) {
+		var retval = false;
 		if (this.available.length>0) {
 			var location=this.available.shift();
 			this.get(instance, location);
-			return true;
+			retval = true;
 		}
-		return false;
+		return retval;
 	},
 	get:function(instance, location) {
-		if (!(location in this.map)) {
+		var opcode = this.map[location];
+		if (!opcode) {
+			// disassemble this opcode
 			var opcodebyte=instance.ram.get(instance, location);
 			var opcodehex=parseInt(opcodebyte).toString(16).toUpperCase();
 			if (opcodehex.length==1) opcodehex="0"+opcodehex;
@@ -623,17 +667,106 @@ SPC700js.instance.disassembled.prototype = {
 				this.addAvailable(instance, opcode.branchTrueDest(instance, location));
 				this.addTarget(instance, location, opcode.branchTrueDest(instance, location));
 			}
-			if (opcode.jumpDest)
+			if (opcode.callDest)
+			{
+				this.addAvailable(instance, opcode.callDest(instance, location));
+				this.addTarget(instance, location, opcode.callDest(instance, location));
+			}
+
+			if (opcode.jumpDest && !(opcode.required(instance, location.hasOwnProperty('X'))))
 			{
 				this.addAvailable(instance, opcode.jumpDest(instance, location));
 				this.addTarget(instance, location, opcode.jumpDest(instance, location));
 			}
+
+			// take note of what addresses the opcode requires
+			// get the list that the opcode says
+			this.requires[location]=opcode.required(instance, location);
+			// add in the rest of the opcode
+			for (var a=1; a<opcode.bytes; a++)
+				this.requires[location].push(location+a);
+			// save it for later
+			for (var i=0; i<this.requires[location].length; i++) {
+				var required=this.requires[location][i];
+				if (!(this.required.hasOwnProperty(required))) {
+					this.required[required]=[];
+				}
+				this.required[required].push(location);
+			}
+			if (!this.pausedEvents) {
+				instance.events.sendEvent(instance, 'disassembled.changed', this.map);
+				instance.events.sendEvent(instance, 'disassembled.opcodeAdded', {'location':location, 'opcode':opcode});
+			} else {
+				this.dirtyData[location]=opcode;
+			}
 		}
-		return this.map[location];
+		var idx = this.available.indexOf(location);
+		if (idx>-1) this.available.splice(idx,1);
+
+		return opcode;
 	},
+	// A piece of memory has changed
 	dirty:function(instance, location) {
-		if (location in this.map) {
+		// if the opcode itself changed
+		if (this.map.hasOwnProperty(location)) {
+			// delete the old disassembly
 			delete this.map[location];
+
+			// clean it out of the required maps
+			for (var i=0; i<this.requires[location].length; i++)
+			{
+				var required=this.requires[location][i];
+				var index=this.required[required].indexOf(location);
+				if (index>=0)
+					this.required[required]=this.required[required].splice(index,1);
+			}
+			delete this.requires[location];
+			instance.events.sendEvent(instance, 'disassembled.opcodeRemoved', {'location':location});
+		}
+
+		// if this piece of ram is used by some opcode
+		if (this.required.hasOwnProperty("RAM_"+location)) {
+			var requires=this.required["RAM_"+location];
+			for (var i=0; i<requires.length; i++) {
+				// notify any interface that the disassembly may have changed
+				instance.events.sendEvent(instance, 'disassembled.opcodeUpdated', {'location':location, 'opcode':this.map[requires[i]]});
+			}
+		}
+	},
+	// A register has changed
+	dirtyRegister:function(instance, register) {
+		// notify about the two PSW flags we might watch (Page, Carry)
+		if (register=="PSW") {
+			notifyRegister=function(register) {
+				if (this.required.hasOwnProperty("PSW_"+register)) {
+					var requires=this.required["PSW_"+register];
+					for (var i=0; i<requires.length; i++) {
+						// notify any interface that the disassembly may have changed
+						instance.events.sendEvent(instance, 'disassembled.opcodeUpdated', {'location':location, 'opcode':this.map[requires[i]]});
+					}
+				}
+			};
+
+			var oldc=this._oldPSW & 1<<SPC700js.consts.PSW_C;
+			var c=instance.cpu.getPSW(SPC700js.consts.PSW_C);
+			if (oldc!=c)
+				notifyRegister("C");
+
+			var oldP=this._oldPSW & 1<<SPC700js.consts.PSW_P;
+			var p=instance.cpu.getPSW(SPC700js.consts.PSW_P);
+			if (oldp!=p)
+				notifyRegister("P");
+
+			this._oldPSW=instance.cpu.PSW;
+		}
+
+		// regular CPU register has changed
+		if (this.required.hasOwnProperty(register)) {
+			var requires=this.required[register];
+			for (var i=0; i<requires.length; i++) {
+				// notify any interface that the disassembly may have changed
+				instance.events.sendEvent(instance, 'disassembled.opcodeUpdated', {'location':location, 'opcode':this.map[requires[i]]});
+			}
 		}
 	}
 };
