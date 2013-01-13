@@ -93,13 +93,14 @@ SPC700js.consts={
 SPC700js.instance = function(spcdata) {
 	var instance=this;
 
-        this.metadata=new SPC700js.instance.metadata(instance);
-        this.cpu=new SPC700js.instance.cpu(instance);
-        this.timers=new SPC700js.instance.timers(instance);
-        this.io=new SPC700js.instance.io(instance);
-        this.ram=new SPC700js.instance.ram(instance);
-        this.dsp=new SPC700js.instance.dsp(instance);
-        this.disassembled=new SPC700js.instance.disassembled(instance);
+	this.events=new SPC700js.instance.events(instance);
+	this.metadata=new SPC700js.instance.metadata(instance);
+	this.cpu=new SPC700js.instance.cpu(instance);
+	this.timers=new SPC700js.instance.timers(instance);
+	this.io=new SPC700js.instance.io(instance);
+	this.ram=new SPC700js.instance.ram(instance);
+	this.dsp=new SPC700js.instance.dsp(instance);
+	this.disassembled=new SPC700js.instance.disassembled(instance);
 
 	if (typeof(spcdata)!='undefined') {
 		this.cpu.load(instance, spcdata.subarray(0x25,0x2e));
@@ -109,6 +110,61 @@ SPC700js.instance = function(spcdata) {
 		this.metadata.load(instance, spcdata.subarray(0x10200, spcdata.length));
 	}
 };
+
+/**
+Responsible for broadcasting events from the playback engine to interested clients
+*/
+SPC700js.instance.events = function(){}
+SPC700js.instance.events.prototype = {
+	paused:false,
+	listeners:{},
+	registerListener:function(instance, key, callback) {
+		if (!(this.listeners.hasOwnProperty(key))) {
+			this.listeners[key]=[];
+		}
+		this.listeners[key].push(callback);
+
+		var index=key.indexOf('.');
+		if (index>0) {
+			var sub=key.substr(0,index);
+			if (instance.hasOwnProperty(sub) && 'initialSubscribe' in instance[sub]) {
+				instance[sub].initialSubscribe(key, callback);
+			}
+		}
+	},
+	sendEvent:function(instance, key, data) {
+		if (this.listeners.hasOwnProperty(key)) {
+			if (!this.paused || this.pauseWhitelist.hasOwnProperty(key)) {
+				var listeners=this.listeners[key];
+				for (var i=0; i<listeners.length; i++) {
+					listeners[i](data);
+				}
+			}
+		}
+	},
+	pauseEvents:function(instance) {
+		var modules = Object.keys(instance);
+		for (var i = 0; i < modules.length; i++) {
+			var module = instance[modules[i]];
+			if (module == this) continue;
+			if (module['pauseEvents']) {
+				module.pauseEvents(instance)
+			}
+		}
+		this.paused=true;
+	},
+	unpauseEvents:function(instance) {
+		this.paused=false;
+		var modules = Object.keys(instance);
+		for (var i = 0; i < modules.length; i++) {
+			var module = instance[modules[i]];
+			if (module == this) continue;
+			if (module['unpauseEvents']) {
+				module.unpauseEvents(instance)
+			}
+		}
+	}
+}
 
 /**
 Contains metadata about the currently-loaded song, such as playback length, artist, and title
@@ -158,6 +214,8 @@ SPC700js.instance.cpu = function(){
 	this.PSW=0;
 	this.subPC=0;
 	this.curOpcode=null;
+	this.pausedEvents = false;
+	this.pausedStatus = {};
 };
 SPC700js.instance.cpu.prototype = {
 	load:function(instance, data) {
@@ -169,6 +227,32 @@ SPC700js.instance.cpu.prototype = {
 		this.SP=data[6];
 		instance.disassembled.addAvailable(instance, this.PC);
 	},
+	initialSubscribe:function(event, callback) {
+		var current={}
+		var monitored=['PC','A','X','Y','SP','PSW'];
+		for (var i=0; i<monitored.length; i++)
+			current[monitored[i]] = this[monitored[i]];
+		callback(current);
+	},
+	pauseEvents:function(instance) {
+		this.pausedEvents = true;
+		this.pausedStatus = {};
+		var monitored=['PC','A','X','Y','SP','PSW'];
+		for (var i=0; i<monitored.length; i++)
+			this.pausedStatus[monitored[i]] = this[monitored[i]];
+	},
+	unpauseEvents:function(instance) {
+		this.pausedEvents = false;
+		var monitored=['PC','A','X','Y','SP','PSW'];
+		var changed={};
+		var old = this.pausedStatus;
+		for (var i=0; i<monitored.length; i++) {
+			if (old[monitored[i]] != this[monitored[i]]) {
+				changed[monitored[i]] = this[monitored[i]];
+			}
+		}
+		instance.events.sendEvent(instance, 'cpu.changed', changed);
+	},
 	setPSW:function(instance, PSWbit, value) {
 		this.PSW=value ? this.PSW | (1<<PSWbit) : this.PSW & ~(1<<PSWbit);
 	},
@@ -177,12 +261,31 @@ SPC700js.instance.cpu.prototype = {
 	},
 	tick:function(instance) {
 		var old = {};
-		old['PC'] = this['PC'];
+		if (!instance.events.paused) {
+			// save old state
+			var monitored=['PC','A','X','Y','SP','PSW'];
+			for (var i=0; i<monitored.length; i++)
+				old[monitored[i]] = this[monitored[i]];
+		}
+		
+			old['PC'] = this['PC'];
 		if (this.curOpcode == null) {
 			this.curOpcode = instance.disassembled.get(instance, this.PC).opcode;
 		}
 		SPC700js.opcodes[this.curOpcode].ucode[this.subPC](instance, this.PC);
 		this.subPC++;
+
+		if (!this.pausedEvents) {
+			// notify listeners of changes
+			var changed={};
+			for (var i=0; i<monitored.length; i++) {
+				if (old[monitored[i]] != this[monitored[i]]) {
+					changed[monitored[i]] = this[monitored[i]];
+				}
+			}
+			instance.events.sendEvent(instance, 'cpu.changed', changed);
+		}
+
 		if (old['PC'] != this.PC) {	// changed to a different opcode
 			this.subPC = 0;
 			this.curOpcode = instance.disassembled.get(instance, this.PC).opcode;
@@ -318,6 +421,8 @@ SPC700js.instance.dsp.prototype = {
 };
 SPC700js.instance.ram = function() {
 	this.data = new Uint8Array(0xffff);
+	this.pausedEvents = false;
+	this.dirtyData = {};
 };
 SPC700js.instance.ram.prototype = {
 	load:function(instance, data) {
@@ -377,6 +482,22 @@ SPC700js.instance.ram.prototype = {
 			instance.io.set(instance, location, value);
 		this.data[location]=value;
 		instance.disassembled.dirty(instance, location);
+		if (!this.pausedEvents)
+			instance.events.sendEvent(instance, 'ram.changed', {address:location, value:value});
+		else
+			this.dirtyData[location]=value;
+	},
+	pauseEvents:function(instance) {
+		this.pausedEvents = true;
+		this.dirtyData = {};
+	},
+	unpauseEvents:function(instance) {
+		this.pausedEvents = false;
+		var addresses = Object.keys(this.dirtyData);
+		for (var i = 0; i < addresses.length; i++) {
+			var address = parseInt(addresses[i]);
+			instance.events.sendEvent(instance, 'ram.changed', {address:address, value:this.data[address]});
+		}
 	}
 };
 SPC700js.instance.disassembled = function() {
