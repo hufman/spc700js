@@ -40,6 +40,18 @@ SPC700js.stringFromUint8=function(array, start, end) {
 	}
 	return ret;
 }
+SPC700js.hexFromUint8=function(value) {
+	var temp=value.toString(16);
+	while (temp.length<2)
+		temp="0"+temp;
+	return "0x"+temp.toUpperCase();
+}
+SPC700js.hexFromUint16=function(value) {
+	var temp=value.toString(16);
+	while (temp.length<4)
+		temp="0"+temp;
+	return "0x"+temp.toUpperCase();
+}
 SPC700js.consts={
 	// PSW bits, shift 1<<
 	PSW_N:7,
