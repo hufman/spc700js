@@ -101,6 +101,7 @@ SPC700js.instance = function(spcdata) {
 	this.ram=new SPC700js.instance.ram(instance);
 	this.dsp=new SPC700js.instance.dsp(instance);
 	this.disassembled=new SPC700js.instance.disassembled(instance);
+	this.breakpoints=new SPC700js.instance.breakpoints(instance);
 
 	if (typeof(spcdata)!='undefined') {
 		this.cpu.load(instance, spcdata.subarray(0x25,0x2e));
@@ -286,9 +287,13 @@ SPC700js.instance.cpu.prototype = {
 			instance.events.sendEvent(instance, 'cpu.changed', changed);
 		}
 
-		if (old['PC'] != this.PC) {	// changed to a different opcode
-			this.subPC = 0;
-			this.curOpcode = instance.disassembled.get(instance, this.PC).opcode;
+		if (old['PC'] != this.PC) {		// changed to a different opcode
+			this.subPC=0;
+			this.curOpcode=instance.disassembled.get(instance, this.PC).opcode;
+			if (instance.breakpoints.check(instance, this.PC)) {
+				instance.events.sendEvent(instance, 'breakpoint', instance.breakpoints.getInfo(instance, this.PC));
+				throw "breakpoint";
+			}
 		}
 
 		instance.dsp.tick(instance, 1);
@@ -300,7 +305,12 @@ SPC700js.instance.cpu.prototype = {
 		var opcode = instance.disassembled.get(instance, oldPC);
 		var toRun = opcode.cycles-this.subPC;
 		for (var i=0; i<toRun; i++) {
-			this.tick(instance);
+			try {
+				this.tick(instance);
+			} catch (e) {
+				if (e === 'breakpoint') break;
+				else throw e;
+			}
 			if (oldPC != this.PC) break;	// moved to next instruction
 		}
 	},
@@ -315,6 +325,83 @@ SPC700js.instance.cpu.prototype = {
 		return instance.ram.get(instance, 0x100 + this.SP);
 	}
 };
+
+SPC700js.Breakpoints = {};
+// Run until we hit a certain PC
+SPC700js.Breakpoints.PC = function(PC, opcode) {this.PC = PC; this.active = false;};
+SPC700js.Breakpoints.PC.prototype = {
+	getInfo: function(instance, PC, opcode) { return "PC == "+this.PC; },
+	check: function(instance, PC, opcode) { return PC == this.PC; }
+};
+// Run until right after we hit a RET
+SPC700js.Breakpoints.AfterReturn = function(PC, opcode) {
+	this.foundRet = opcode.desc.substring(0,3) == 'RET';
+	this.PC = PC;
+};
+SPC700js.Breakpoints.AfterReturn.prototype = {
+	getInfo: function(instance, PC, opcode) { return "Step Out"; },
+	check: function(instance, PC, opcode) {
+		if (this.foundRet && this.PC != PC)
+			return true;
+		this.foundRet = opcode.desc.substring(0,3) == 'RET';
+		this.PC = PC;
+		return false;
+	}
+};
+// Run until we find a Jump
+SPC700js.Breakpoints.Jump = function() {};
+SPC700js.Breakpoints.Jump.prototype = {
+	getInfo: function(instance, PC, opcode) { return "Jump"; },
+	check: function(instance, PC, opcode) { return opcode.hasOwnProperty('jumpDest'); }
+}
+// Run until we find a Branch
+SPC700js.Breakpoints.Branch = function() {};
+SPC700js.Breakpoints.Branch.prototype = {
+	getInfo: function(instance, PC, opcode) { return "Branch"; },
+	check: function(instance, PC, opcode) { return opcode.hasOwnProperty('branchTrueDest'); }
+}
+
+		
+
+SPC700js.instance.breakpoints = function() {
+	this.breakpoints = [];
+}
+SPC700js.instance.breakpoints.prototype = {
+	check: function(instance, PC, opcode) {
+		opcode = opcode || instance.disassembled.get(instance, PC);
+		var ret = false;
+		for (var i = 0; i < this.breakpoints.length; i++) {
+			if (this.breakpoints[i].active)
+				ret = ret || this.breakpoints[i].check(instance, PC, opcode);
+		}
+		return ret;
+	},
+	getInfo: function(instance, PC, opcode) {
+		opcode = opcode || instance.disassembled.get(instance, PC);
+
+		var ret = [];
+		for (var i = 0; i < this.breakpoints.length; i++) {
+			var breakpoint = this.breakpoints[i];
+			ret.push({
+				active: breakpoint.active,
+				info: breakpoint.getInfo(instance, PC, opcode),
+				check: breakpoint.check(instance, PC, opcode),
+				breakpoint: breakpoint
+			});
+		}
+		return ret;
+	},
+	addBreakpoint: function(instance, breakpoint) {
+		breakpoint.active = false;
+		this.breakpoints.push(breakpoint);
+		return this.breakpoints.length - 1;
+	},
+	removeBreakpoint: function(instance, breakpoint) {
+		var index = this.breakpoints.indexOf(breakpoint);
+		if (index > -1)
+			this.breakpoints.splice(index, 1);
+	}
+}
 
 SPC700js.instance.timers = function(){
 	// The divisor between the 1mhz main cpu and incrementing each timer's internal counter
