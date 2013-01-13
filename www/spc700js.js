@@ -19,15 +19,17 @@ var SPC700jsLoader = {
 	}
 }
 
-Object.prototype.keys = function() {
-	var keys = [];
-	for (var key in this)
-	{
-		if (this.hasOwnProperty(key))
-			keys.push(key);
+if (!(Object.hasOwnProperty('keys'))) {
+	Object.keys = function(obj) {
+		var keys = [];
+		for (var key in obj)
+		{
+			if (obj.hasOwnProperty(key))
+				keys.push(key);
+		}
+		keys.sort();
+		return keys;
 	}
-	keys.sort();
-	return keys;
 }
 
 SPC700js={};

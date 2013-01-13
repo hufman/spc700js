@@ -28,7 +28,7 @@ var SPC700interface={
 			output+=spc.disassembled.available[index].toString(16)+"\n";
 		}
 		output+="\nDisassembled:\n"
-		var addrs=spc.disassembled.map.keys();
+		var addrs=Object.keys(spc.disassembled.map);
 		for (var index=0; index<addrs.length; index++) {
 			var addr=parseInt(addrs[index]);
 			var dis=spc.disassembled.map[addr];
