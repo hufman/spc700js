@@ -16,14 +16,22 @@ var SPC700interface={
 	init:function() {
 		alert("Loaded "+spc.metadata.data['artist'] + ': ' + spc.metadata.data['game'] + ' - ' + spc.metadata.data['title']);
 		document.getElementById('disassemble').addEventListener('click', SPC700interface.disassembleHandle);
+		document.getElementById('step').addEventListener('click', SPC700interface.stepHandle);
 		SPC700interface.display();
 	},
 	disassembleHandle:function(e) {
 		var found=spc.disassembled.parseNextAvailable(spc);
 		SPC700interface.display();
 	},
+	stepHandle:function(e) {
+		spc.cpu.stepInstruction(spc);
+		SPC700interface.display();
+	},
 	display:function() {
-		var output="Available:\n"
+		var output="";
+		output+="CPU Status:\n";
+		output+="PC:"+spc.cpu.PC.toString(16)+"\n\n";
+		output+="Available:\n";
 		for (var index=0; index<spc.disassembled.available.length; index++) {
 			output+=spc.disassembled.available[index].toString(16)+"\n";
 		}
@@ -43,6 +51,7 @@ var SPC700interface={
 
 <body id="body">
 <input id="disassemble" value="Disassemble" type="button" ></input>
+<input id="step" value="Step" type="button" ></input>
 <textarea id="disassembly" rows="50" cols="400">
 </textarea>
 </body>

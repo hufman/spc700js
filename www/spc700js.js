@@ -7,7 +7,7 @@ var SPC700jsLoader = {
 			if (this.status == 200) {
 				var array = xhr.response;
 				var data = new Uint8Array(array);
-				
+
 				onload(new SPC700js.instance(data));
 			}
 			else
@@ -64,24 +64,24 @@ SPC700js.consts={
 	PSW_I:2,
 	PSW_Z:1,
 	PSW_C:0,
-	
+
 	// Control register bits, shift 1<<
 	CR_PC32:5,
 	CR_PC10:4,
 	CR_ST2:2,
 	CR_ST1:1,
 	CR_ST0:0,
-	
+
 	// general addresses
 	CR: 0xf1,
 	DSP_ADDR: 0xf2,
 	DSP_DATA: 0xf3,
-	
+
 	IOPORT_0:0xf4,
 	IOPORT_1:0xf5,
 	IOPORT_2:0xf6,
 	IOPORT_3:0xf7,
-	
+
 	// timer addresses
 	TIMER_0:0xfa,
 	TIMER_1:0xfb,
@@ -106,7 +106,6 @@ SPC700js.instance = function(spcdata) {
 	this.ram.load(instance, spcdata.subarray(0x100, 0x10100));
 	this.dsp.load(instance, spcdata.subarray(0x10100, 0x10180));
 	this.metadata.load(instance, spcdata.subarray(0x10200, spcdata.length));
-	
 };
 
 /**
@@ -169,10 +168,36 @@ SPC700js.instance.cpu.prototype = {
 		instance.disassembled.addAvailable(instance, this.PC);
 	},
 	setPSW:function(instance, PSWbit, value) {
-		this.PSW=value ? this.PSW & ~(1<PSWbit) : this.PSW | (1<PSWbit);
+		this.PSW=value ? this.PSW | (1<<PSWbit) : this.PSW & ~(1<<PSWbit);
+	},
+	getPSW:function(instance, PSWbit) {
+		return (this.PSW & (1<<PSWbit)) > 0;
 	},
 	tick:function(instance) {
-		alert("Ticked CPU!");
+		var old = {};
+		old['PC'] = this['PC'];
+		if (this.curOpcode == null) {
+			this.curOpcode = instance.disassembled.get(instance, this.PC).opcode;
+		}
+		SPC700js.opcodes[this.curOpcode].ucode[this.subPC](instance, this.PC);
+		this.subPC++;
+		if (old['PC'] != this.PC) {	// changed to a different opcode
+			this.subPC = 0;
+			this.curOpcode = instance.disassembled.get(instance, this.PC).opcode;
+		}
+
+		instance.dsp.tick(instance, 1);
+		instance.timers.tick(instance, 1);
+		instance.io.tick(instance, 1);
+	},
+	stepInstruction:function(instance) {
+		var oldPC = this.PC;
+		var opcode = instance.disassembled.get(instance, oldPC);
+		var toRun = opcode.cycles-this.subPC;
+		for (var i=0; i<toRun; i++) {
+			this.tick(instance);
+			if (oldPC != this.PC) break;	// moved to next instruction
+		}
 	},
 	push:function(instance, byteValue) {
 		instance.ram.set(instance, this.SP, byteValue);
@@ -296,7 +321,7 @@ SPC700js.instance.ram.prototype = {
 			return instance.io.get(instance, location);
 			
 		if (location==SPC700js.consts.DSP_DATA)	// DSP data
-			return instance.dsp.get(instance, this.ram.data[SPC700js.consts.DSP_ADDR]);
+			return instance.dsp.get(instance, this.data[SPC700js.consts.DSP_ADDR]);
 			
 		return this.data[location];
 	},
@@ -333,7 +358,7 @@ SPC700js.instance.ram.prototype = {
 			instance.timers.setTimer(instance, location-SPC700js.consts.TIMER_0, value);
 			
 		if (location==SPC700js.consts.DSP_DATA)	// dsp writes
-			instance.dsp.set(instance, this.ram.data[SPC700js.consts.DSP_ADDR], value);
+			instance.dsp.set(instance, this.data[SPC700js.consts.DSP_ADDR], value);
 			
 		if (location>=SPC700js.consts.IOPORT+0 && location <=SPC700js.consts.IOPORT_3)	// io ports
 			instance.io.set(instance, location, value);
