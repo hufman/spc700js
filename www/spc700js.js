@@ -245,18 +245,24 @@ SPC700js.instance.timers = function(){
 		0];
 };
 SPC700js.instance.timers.prototype = {
-	tick:function(instance) {
-		for (var i=0; i<2; i++) {
-			this.privateCounter[i]++;
-			if (this.timerEnabled[i] && this.privateCounter[i]==this.privateDivisor[i]) {
-				this.privateCounter[i]=0;
-				this.internalCounter[i]++;
+	tick:function(instance, count) {
+		count = count || 1;
+		for (var i=0; i<3; i++) {
+			this.privateCounter[i]+=count;
+			if (this.privateCounter[i]>=this.privateDivisor[i]) {
+				this.privateCounter[i]-=this.privateDivisor[i];
+				if (this.timerEnabled[i]) {
+					this.internalCounter[i]++;
+				}
 			}
-			if (this.internalCounter[i]==this.internalDivisor[i]) {
+			if (this.internalCounter[i]>255)
 				this.internalCounter[i]=0;
+
+			if (this.internalCounter[i]>=this.internalDivisor[i]) {
+				this.internalCounter[i]-=this.internalDivisor[i];
 				this.counter[i]++;
 			}
-			if (this.counter[i]==this.counterMax) {
+			if (this.counter[i]>this.counterMax) {
 				this.counter[i]=0;
 			}
 		}
@@ -264,18 +270,21 @@ SPC700js.instance.timers.prototype = {
 	
 	enableTimer:function(instance, timer) {
 		if (this.timerEnabled[timer])
-			this.intenalCounter[timer]=0;
+			this.internalCounter[timer]=0;
 		this.timerEnabled[timer]=1;
 	},
 	disableTimer:function(instance, timer) {
 		this.timerEnabled[timer]=0;
 	},
-	setTimer:function(instance, timer, value) {
-		if (!this.timerEnabled[timer])
-			this.internalCounter[timer]=0;
+	setTimer:function(instance, timer, value, loading) {
+		if (!this.timerEnabled[timer] || loading)
+			this.internalDivisor[timer]=value;
 	},
-	getCounter:function(instance, timer) {
-		return this.counter[timer];
+	getCounter:function(instance, timer, viewonly) {
+		var ret = this.counter[timer];
+		if (!viewonly)
+			this.counter[timer]=0;
+		return ret;
 	}
 };
 SPC700js.instance.io = function(){
