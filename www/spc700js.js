@@ -409,14 +409,44 @@ SPC700js.instance.io.prototype = {
 };
 SPC700js.instance.dsp = function(instance){
 	this.data = new Uint8Array(0x80);
+	this.pausedEvents = false;
+	this.dirtyData = {};
 };
 SPC700js.instance.dsp.prototype = {
 	load:function(instance, data) {
 		this.data=data;
 	},
+	pauseEvents:function(instance) {
+		this.pausedEvents = true;
+		this.dirtyData = {};
+	},
+	unpauseEvents:function(instance) {
+		this.pausedEvents = false;
+		var addresses = Object.keys(this.dirtyData);
+		for (var i = 0; i < addresses.length; i++) {
+			var address = parseInt(addresses[i]);
+			instance.events.sendEvent(instance, 'dsp.changed', {address:address, value:this.data[address]});
+		}
+	},
 	tick:function(instance) {
 	},
+	get:function(instance, location) {
+		return this.data[location & 0x7f];
+	},
 	set:function(instance, dspregister, value) {
+		if (dspregister <= 0x7f) {
+			this.data[dspregister]=value;
+			instance.ram.dspChanged(instance, dspregister, value);
+			if (!this.pausedEvents)
+				instance.events.sendEvent(instance, 'dsp.changed', {address:dspregister, value:value});
+			else
+				this.dirtyData[dspregister] = value;
+		}
+	},
+	setFromRam:function(instance, dspregister, value) {
+		if (dspregister <= 0x7f) {
+			this.data[dspregister]=value;
+		}
 	}
 };
 SPC700js.instance.ram = function() {
@@ -429,22 +459,33 @@ SPC700js.instance.ram.prototype = {
 		this.data=data;
 	},
 	get:function(instance, location) {
-		if (location==SPC700js.consts.CR)	// control register
-			return 0;
-			
-		if (location>=SPC700js.consts.COUNTER_0 && location<=SPC700js.consts.COUNTER_2)	// timer counters
-			return instance.timers.getCounter(instance, location-SPC700js.consts.COUNTER_0);
-			
-		if (location>=SPC700js.consts.IOPORT_0 && location <=SPC700js.consts.IOPORT_3)	// IO ports
-			return instance.io.get(instance, location);
-			
-		if (location==SPC700js.consts.DSP_DATA)	// DSP data
-			return instance.dsp.get(instance, this.data[SPC700js.consts.DSP_ADDR]);
-			
-		return this.data[location];
+		var retram = undefined;
+		if (location>=SPC700js.consts.COUNTER_0 && location<=SPC700js.consts.COUNTER_2) { // timer counters
+			retram = instance.timers.getCounter(instance, location-SPC700js.consts.COUNTER_0, viewonly);
+		}
+		else if (location>=SPC700js.consts.IOPORT_0 && location <=SPC700js.consts.IOPORT_3) {   // IO ports
+			retram = instance.io.get(instance, location-SPC700js.consts.IOPORT_0);
+		}
+		else if (location==SPC700js.consts.DSP_DATA) {  // DSP data
+			retram = instance.dsp.get(instance, this.data[SPC700js.consts.DSP_ADDR]);
+		}
+		else {
+			retram = this.data[location];
+		}
+		return retram;
 	},
 	set:function(instance, location, value) {
-		if (location==SPC700js.consts.CR)	// control register
+		// set the ram data
+		this.data[location]=value;
+		instance.disassembled.dirty(instance, location);
+		instance.events.sendEvent(instance, 'ram.changed', {address:location, value:value});
+		if (!this.pausedEvents)
+			instance.events.sendEvent(instance, 'ram.changed', {address:location, value:value});
+		else
+			this.dirtyData[location]=value;
+
+		// set any special places too
+		if (location==SPC700js.consts.CR)       // control register
 		{
 			if (value & 1<<SPC700js.consts.CR_PC32)
 			{
@@ -457,35 +498,70 @@ SPC700js.instance.ram.prototype = {
 				instance.io.set(instance, 0xf4, 0);
 			}
 			if (value & 1<<SPC700js.consts.CR_ST2)
+			{
 				instance.timers.enableTimer(instance, 2);
+			}
 			else
+			{
 				instance.timers.disableTimer(instance, 2);
-				
+			}
+
 			if (value & 1<<SPC700js.consts.CR_ST1)
+			{
 				instance.timers.enableTimer(instance, 1);
+			}
 			else
+			{
 				instance.timers.disableTimer(instance, 1);
-				
+			}
+
 			if (value & 1<<SPC700js.consts.CR_ST0)
+			{
 				instance.timers.enableTimer(instance, 0);
+			}
 			else
+			{
 				instance.timers.disableTimer(instance, 0);
+			}
 		}
-		
-		if (location>=SPC700js.consts.TIMER_0 && location<=SPC700js.consts.TIMER_2)	// set timer value
+
+		if (location>=SPC700js.consts.TIMER_0 && location<=SPC700js.consts.TIMER_2)     // set timer value
+		{
 			instance.timers.setTimer(instance, location-SPC700js.consts.TIMER_0, value);
-			
-		if (location==SPC700js.consts.DSP_DATA)	// dsp writes
-			instance.dsp.set(instance, this.data[SPC700js.consts.DSP_ADDR], value);
-			
-		if (location>=SPC700js.consts.IOPORT+0 && location <=SPC700js.consts.IOPORT_3)	// io ports
+		}
+
+		if (location==SPC700js.consts.DSP_DATA) // dsp writes
+		{
+			instance.dsp.setFromRam(instance, this.data[SPC700js.consts.DSP_ADDR], value);
+		}
+
+		if (location>=SPC700js.consts.IOPORT+0 && location <=SPC700js.consts.IOPORT_3)  // io ports
+		{
 			instance.io.set(instance, location, value);
-		this.data[location]=value;
-		instance.disassembled.dirty(instance, location);
-		if (!this.pausedEvents)
-			instance.events.sendEvent(instance, 'ram.changed', {address:location, value:value});
-		else
-			this.dirtyData[location]=value;
+		}
+
+		// we changed the dsp addr, update the dsp data spot
+		if (location==SPC700js.consts.DSP_ADDR) // dsp location
+		{
+			var dspvalue=instance.dsp.get(instance, value);
+			this.data[SPC700js.consts.DSP_DATA]=dspvalue;
+			instance.disassembled.dirty(instance, SPC700js.consts.DSP_DATA);
+			if (!this.pausedEvents)
+				instance.events.sendEvent(instance, 'ram.changed', {address:SPC700js.consts.DSP_DATA, value:dspvalue});
+			else
+				this.dirtyData[SPC700js.consts.DSP_DATA]=dspvalue;
+		}
+
+	},
+	dspChanged:function(instance, dspregister, value) {
+		if (this.get(instance, SPC700js.consts.DSP_ADDR) == dspregister) {
+			this.data[SPC700js.consts.DSP_DATA]=value;
+			instance.disassembled.dirty(instance, SPC700js.consts.DSP_DATA);
+			if (!this.pausedEvents)
+				instance.events.sendEvent(instance, 'ram.changed', {address:SPC700js.consts.DSP_DATA, value:value});
+			else
+				this.dirtyData[SPC700js.consts.DSP_DATA]=value;
+		}
 	},
 	pauseEvents:function(instance) {
 		this.pausedEvents = true;
