@@ -101,11 +101,13 @@ SPC700js.instance = function(spcdata) {
         this.dsp=new SPC700js.instance.dsp(instance);
         this.disassembled=new SPC700js.instance.disassembled(instance);
 
-	this.cpu.load(instance, spcdata.subarray(0x25,0x2e));
-	this.metadata.load(instance, spcdata.subarray(0x2e, 0xd4));
-	this.ram.load(instance, spcdata.subarray(0x100, 0x10100));
-	this.dsp.load(instance, spcdata.subarray(0x10100, 0x10180));
-	this.metadata.load(instance, spcdata.subarray(0x10200, spcdata.length));
+	if (typeof(spcdata)!='undefined') {
+		this.cpu.load(instance, spcdata.subarray(0x25,0x2e));
+		this.metadata.load(instance, spcdata.subarray(0x2e, 0xd4));
+		this.ram.load(instance, spcdata.subarray(0x100, 0x10100));
+		this.dsp.load(instance, spcdata.subarray(0x10100, 0x10180));
+		this.metadata.load(instance, spcdata.subarray(0x10200, spcdata.length));
+	}
 };
 
 /**
